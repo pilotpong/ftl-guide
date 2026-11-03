@@ -1,0 +1,2884 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THAI FTL Guideline — OM-A Chapter 7 Interactive Knowledge Graph &amp; In-Flight Rest Calculator</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      user-select: none;
+      overflow: hidden;
+    }
+    .selectable-text { user-select: text; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.6); }
+    .graph-grid-dark {
+      background-color: #0B1120;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.16) 1.25px, transparent 1.25px);
+      background-size: 24px 24px;
+    }
+    .graph-grid-light {
+      background-color: #F1F5F9;
+      background-image: radial-gradient(rgba(71, 85, 105, 0.18) 1.25px, transparent 1.25px);
+      background-size: 24px 24px;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { filter: drop-shadow(0 0 8px rgba(245, 176, 65, 0.75)); }
+      50% { filter: drop-shadow(0 0 18px rgba(245, 176, 65, 1)); }
+    }
+    .tour-active-node {
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col overflow-hidden">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="h-14 border-b border-slate-800 bg-slate-900/95 backdrop-blur px-3 lg:px-4 flex items-center justify-between gap-2 shrink-0 z-30">
+    <!-- Brand Identity: THAI FTL Guideline -->
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 via-indigo-600 to-amber-500 flex items-center justify-center font-extrabold text-white shadow-md shrink-0 text-base">
+        ✈
+      </div>
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-base tracking-tight text-white truncate">THAI FTL Guideline</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 hidden sm:inline">OM-A Chapter 7</span>
+          <span class="text-[11px] px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold hidden md:inline">TR001/02 • TCAR ORO.FTL</span>
+        </div>
+        <p class="text-[11px] text-slate-400 truncate">Interactive Regulatory Knowledge Graph, STD/ETA In-Flight Rest Calculator &amp; PSWM Simulator</p>
+      </div>
+    </div>
+
+    <!-- Main Mode Switcher -->
+    <div class="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700/80 shrink-0">
+      <button id="viewBtnGraph" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-purple-600 text-white shadow">
+        ◈ Structural Graph
+      </button>
+      <button id="viewBtnDomain" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white">
+        ⟿ Operational Flows
+      </button>
+      <button id="viewBtnSimulator" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white">
+        🧮 STD/ETA &amp; In-Flight Rest
+      </button>
+      <button id="viewBtnTables" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white hidden sm:inline-block">
+        ⊞ Master Tables
+      </button>
+    </div>
+
+    <!-- Right Controls: Persona, Diff Overlay, Path Finder, Theme -->
+    <div class="flex items-center gap-2 shrink-0">
+      <div class="hidden xl:flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5">
+        <span class="text-[11px] text-slate-400 font-medium">🎭 Role:</span>
+        <select id="personaSelect" aria-label="Select Role" class="bg-transparent text-xs font-bold text-amber-300 focus:outline-none cursor-pointer">
+          <option value="overview" class="bg-slate-900 text-slate-100">Overview (Quick Scan)</option>
+          <option value="crew" selected class="bg-slate-900 text-slate-100">Flight &amp; Cabin Crew</option>
+          <option value="dispatcher" class="bg-slate-900 text-slate-100">Roster / OP-1 Dispatcher</option>
+          <option value="safety" class="bg-slate-900 text-slate-100">Safety / FRMS Auditor</option>
+        </select>
+      </div>
+
+      <button id="diffToggleBtn" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 bg-slate-800/80 text-slate-300 hover:border-amber-500/60 flex items-center gap-1.5 transition-all" title="Highlight TCAR ORO.FTL changes in TR001/02">
+        <span id="diffDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+        <span>TR001/02 Diff</span>
+      </button>
+
+      <button id="pathModalBtn" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:border-purple-500/60 hidden md:flex items-center gap-1 transition-all" title="Find shortest dependency path between any two rules">
+        <span>⟐ Trace Path</span>
+      </button>
+
+      <button id="themeToggleBtn" type="button" class="p-1.5 rounded-lg border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white transition-all" title="Toggle Dark/Light Theme" aria-label="Toggle Theme">
+        <span id="themeIcon">☀️</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- SUB-TOOLBAR: Search, Topic Filter Pills, Layout Mode & Guided Tours -->
+  <div class="bg-slate-900/90 border-b border-slate-800 px-3 lg:px-4 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 z-20">
+    <!-- Left: Fuzzy Search -->
+    <div class="flex items-center gap-2 flex-1 min-w-[220px] max-w-sm">
+      <div class="relative flex-1">
+        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+        <input id="searchInput" type="text" placeholder="Filter topics (e.g. 'split duty', 'WOCL', 'B777', 'Table 7.7')..." class="w-full pl-8 pr-7 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-purple-500" />
+        <button id="clearSearchBtn" type="button" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs" aria-label="Clear search">✕</button>
+      </div>
+      <select id="personaSelectMobile" aria-label="Select Role Mobile" class="xl:hidden bg-slate-800 border border-slate-700 text-xs font-bold text-amber-300 rounded-lg px-2 py-1.5 focus:outline-none">
+        <option value="overview">🎭 Overview</option>
+        <option value="crew" selected>🎭 Crew</option>
+        <option value="dispatcher">🎭 Roster/OP-1</option>
+        <option value="safety">🎭 FRMS/Safety</option>
+      </select>
+    </div>
+
+    <!-- Center: High-Contrast Topic Group Filter Pills -->
+    <div id="layerFilterBar" class="flex items-center gap-1.5 overflow-x-auto py-0.5">
+      <button type="button" data-layer="all" class="layer-pill px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-slate-950 shadow shrink-0 ring-2 ring-amber-400">
+        All 6 Topics (19)
+      </button>
+      <button type="button" data-layer="foundation" class="layer-pill px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-950/90 text-sky-200 border border-sky-400/50 hover:bg-sky-900 shrink-0">
+        1. Clock &amp; Defs (4)
+      </button>
+      <button type="button" data-layer="reporting" class="layer-pill px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950/90 text-emerald-200 border border-emerald-400/50 hover:bg-emerald-900 shrink-0">
+        2. Report &amp; Caps (3)
+      </button>
+      <button type="button" data-layer="fdp" class="layer-pill px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-950/90 text-purple-200 border border-purple-400/50 hover:bg-purple-900 shrink-0">
+        3. Basic Max FDP (3)
+      </button>
+      <button type="button" data-layer="extension" class="layer-pill px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-950/90 text-amber-200 border border-amber-400/50 hover:bg-amber-900 shrink-0">
+        4. Extensions &amp; Ops (4)
+      </button>
+      <button type="button" data-layer="rest" class="layer-pill px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950/90 text-rose-200 border border-rose-400/50 hover:bg-rose-900 shrink-0">
+        5. Standby &amp; Rest (3)
+      </button>
+      <button type="button" data-layer="frms" class="layer-pill px-2.5 py-1 rounded-lg text-xs font-bold bg-teal-950/90 text-teal-200 border border-teal-400/50 hover:bg-teal-900 shrink-0">
+        6. FRMS &amp; PSWM (2)
+      </button>
+    </div>
+
+    <!-- Right: Guided Tour Selector -->
+    <div class="flex items-center gap-1.5 shrink-0">
+      <select id="tourSelect" aria-label="Select Guided Tour" class="bg-slate-800 border border-purple-500/50 text-xs font-bold text-purple-200 rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+        <option value="">🧭 Start a Guided Tour...</option>
+        <option value="tour_fdp">Tour 1: Daily Max FDP Mastery (6 steps)</option>
+        <option value="tour_ops">Tour 2: Delays, Split Duty &amp; PIC Discretion (4 steps)</option>
+        <option value="tour_rest">Tour 3: Standby, Reserve &amp; Rest Recovery (4 steps)</option>
+        <option value="tour_frms">Tour 4: FRMS &amp; PSWM Fatigue Check (3 steps)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ACTIVE GUIDED TOUR BANNER -->
+  <div id="tourBanner" class="hidden bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-900 border-b border-amber-400/50 px-4 py-2.5 items-center justify-between gap-3 shrink-0 z-20">
+    <div class="flex items-center gap-3 min-w-0">
+      <span id="tourStepBadge" class="px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 font-extrabold text-xs shrink-0">Step 1 / 6</span>
+      <div class="min-w-0">
+        <div id="tourTitleText" class="text-xs font-extrabold text-amber-300 truncate">Guided Tour</div>
+        <div id="tourStepDesc" class="text-xs sm:text-sm font-medium text-white truncate">Step explanation...</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button id="tourPrevBtn" type="button" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-100 border border-slate-600">← Prev</button>
+      <button id="tourNextBtn" type="button" class="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-xs font-extrabold text-slate-950">Next →</button>
+      <button id="tourExitBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-900 text-xs font-semibold text-slate-300 hover:text-white ml-1">✕ Exit</button>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE AREA -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- VIEW 1: HIGH-VISIBILITY STRUCTURAL KNOWLEDGE GRAPH -->
+    <main id="viewGraphContainer" class="flex-1 flex overflow-hidden relative">
+      <div id="graphViewport" class="flex-1 relative overflow-hidden graph-grid-dark cursor-grab active:cursor-grabbing">
+
+        <!-- Top-Left Graph Layout Switcher & Legend Bar -->
+        <div class="absolute top-3 left-3 flex flex-wrap items-center gap-2 z-10">
+          <div class="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-1 flex items-center gap-1 shadow-xl">
+            <button id="layoutBoardBtn" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow transition-all" title="Large, high-visibility 3x2 Topic Board layout">
+              ⊞ 3×2 Topic Board (Clear View)
+            </button>
+            <button id="layoutFlowBtn" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-all" title="Left-to-right 6-column dependency flow">
+              ⟿ 6-Column Flow
+            </button>
+          </div>
+
+          <button id="toggleConnectionLinesBtn" type="button" class="px-2.5 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur border border-slate-700 text-xs font-bold text-sky-300 hover:text-white shadow-xl transition-all">
+            🔗 Links: Selected Only
+          </button>
+        </div>
+
+        <!-- Top-Right Toggle Inspector Button -->
+        <div class="absolute top-3 right-3 z-10">
+          <button id="toggleInspectorBtn" type="button" class="px-3 py-1.5 rounded-xl bg-slate-900/95 backdrop-blur border border-slate-700 hover:border-purple-400 text-xs font-bold text-slate-200 shadow-xl transition-all">
+            ⇄ Hide Details Panel
+          </button>
+        </div>
+
+        <!-- Active Path Banner -->
+        <div id="activePathBanner" class="hidden absolute top-14 left-3 bg-sky-950/95 border-2 border-sky-400 text-sky-100 px-3.5 py-2 rounded-xl shadow-2xl text-xs items-center gap-2 z-10 max-w-xl">
+          <span class="font-extrabold text-sky-300">⟐ Dependency Chain:</span>
+          <span id="activePathText" class="font-semibold truncate"></span>
+          <button id="clearPathBtn" type="button" class="ml-2 px-2 py-0.5 rounded bg-sky-800 hover:bg-sky-700 text-[11px] font-bold">Clear</button>
+        </div>
+
+        <!-- Main Interactive SVG -->
+        <svg id="graphSvg" class="w-full h-full block" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748B" />
+            </marker>
+            <marker id="arrow-upstream" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#38BDF8" />
+            </marker>
+            <marker id="arrow-downstream" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#FBBF24" />
+            </marker>
+            <marker id="arrow-path" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#22D3EE" />
+            </marker>
+          </defs>
+          <g id="graphTransformGroup">
+            <g id="graphHullsLayer"></g>
+            <g id="graphEdgesLayer"></g>
+            <g id="graphNodesLayer"></g>
+            <g id="graphEdgeLabelsLayer"></g>
+          </g>
+        </svg>
+
+        <!-- Floating Zoom & Legend Controls (Bottom Left) -->
+        <div class="absolute bottom-4 left-4 flex flex-wrap items-center gap-2 bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-1.5 shadow-2xl z-10">
+          <button id="zoomInBtn" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-base flex items-center justify-center" title="Zoom In">+</button>
+          <button id="zoomOutBtn" type="button" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-base flex items-center justify-center" title="Zoom Out">−</button>
+          <button id="zoomResetBtn" type="button" class="px-3 h-8 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center justify-center shadow" title="Fit Graph to Screen">Fit to Screen</button>
+          <div class="h-4 w-[1px] bg-slate-700 mx-1 hidden sm:block"></div>
+          <div class="hidden sm:flex items-center gap-3 text-[11px] font-semibold px-2">
+            <span class="flex items-center gap-1 text-amber-300"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Selected / Governs →</span>
+            <span class="flex items-center gap-1 text-sky-300"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span> ← Depends On</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDEBAR: NODE INSPECTOR PANEL -->
+      <aside id="nodeInspector" class="w-full sm:w-[400px] lg:w-[450px] border-l border-slate-800 bg-slate-900/95 backdrop-blur flex flex-col shrink-0 z-20 overflow-hidden transition-all">
+        <div class="p-4 border-b border-slate-800 flex items-start justify-between gap-2 bg-slate-950/50">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span id="inspLayerBadge" class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40">Topic</span>
+              <span id="inspSectionBadge" class="text-xs font-mono font-bold text-slate-300">OM-A §7.2.3</span>
+              <span id="inspDiffBadge" class="hidden text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40">★ TR001/02</span>
+            </div>
+            <h2 id="inspTitle" class="text-lg font-extrabold text-white leading-snug selectable-text">Select a Topic Card</h2>
+          </div>
+          <button id="openSimFromNodeBtn" type="button" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold shrink-0 shadow" title="Simulate STD/ETA &amp; In-Flight Rest">
+            🧮 STD/ETA Calc
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 selectable-text">
+          <div class="p-3.5 rounded-xl bg-slate-950 border-2 border-amber-500/40 shadow-inner">
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 mb-1">⚡ Core Rule &amp; Hard Limits</div>
+            <p id="inspKeyMetric" class="text-sm font-bold text-white leading-relaxed"></p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/40">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                <span>🎭</span>
+                <span id="inspPersonaLabel">Flight &amp; Cabin Crew Focus</span>
+              </span>
+              <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200">Role-Specific</span>
+            </div>
+            <p id="inspPersonaText" class="text-xs sm:text-[13px] text-slate-100 leading-relaxed"></p>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300 mb-2">Detailed Regulatory Breakdown</h3>
+            <ul id="inspBullets" class="space-y-2 text-xs sm:text-[13px] text-slate-200 leading-relaxed"></ul>
+          </div>
+
+          <div id="inspTableWrapper" class="hidden">
+            <h3 id="inspTableTitle" class="text-xs font-extrabold uppercase tracking-wider text-amber-300 mb-2">Regulatory Lookup Table</h3>
+            <div id="inspTableContainer" class="overflow-x-auto rounded-xl border border-slate-700 bg-slate-950"></div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800">
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300 mb-2.5">Connected Topics (Click to Jump)</h3>
+            <div class="space-y-2.5">
+              <div>
+                <div class="text-[11px] font-bold text-sky-400 mb-1.5">← Prerequisite Topics (Depends On):</div>
+                <div id="inspUpstreamList" class="flex flex-wrap gap-1.5"></div>
+              </div>
+              <div>
+                <div class="text-[11px] font-bold text-amber-400 mb-1.5">→ Downstream Impact (Governs / Modifies):</div>
+                <div id="inspDownstreamList" class="flex flex-wrap gap-1.5"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="inspDiffBox" class="p-3 rounded-xl bg-amber-950/25 border border-amber-500/30">
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 mb-1">📊 TR001/02 Change Impact (TCAR ORO.FTL)</div>
+            <p id="inspDiffText" class="text-xs text-amber-100/90 leading-relaxed"></p>
+          </div>
+
+          <div class="pt-2 border-t border-slate-800">
+            <div class="text-[11px] font-semibold text-slate-400 mb-1.5">📚 Key Regulatory Concepts:</div>
+            <div id="inspTagsList" class="flex flex-wrap gap-1.5"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- VIEW 2: OPERATIONAL DOMAIN FLOWS -->
+    <section id="viewDomainContainer" class="hidden flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-950 selectable-text">
+      <div class="max-w-6xl mx-auto space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <span class="text-xs font-mono font-bold uppercase tracking-wider text-purple-400">THAI FTL Guideline • End-to-End Operational Flows</span>
+          <h2 class="text-xl font-extrabold text-white mt-0.5">Step-by-Step Decision Pipelines</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Follow these 4 operational workflows from pre-flight planning to post-rotation recovery. Click any step card to highlight that topic in the Structural Graph.</p>
+        </div>
+        <div id="domainFlowsGrid" class="space-y-6"></div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: INTERACTIVE FLIGHT LEG STD/ETA & IN-FLIGHT REST SIMULATOR -->
+    <section id="viewSimulatorContainer" class="hidden flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-950 selectable-text">
+      <div class="max-w-7xl mx-auto space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <span class="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">THAI FTL Guideline • Flight Leg STD/ETA &amp; Method 2 In-Flight Rest Engine (§7.2.4.2 &amp; Table 7.7)</span>
+            <h2 class="text-xl font-extrabold text-white mt-0.5">Flight Leg STD/ETA, In-Flight Rest &amp; FTL Calculator</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Enter your flight leg STD and ETA below to automatically compute Reporting Time, Block Time, Actual FDP, Ultra-Long-Haul (+1h) eligibility, Flight &amp; Cabin Crew Minimum In-Flight Rest (Table 7.7), and exact Cruise Rest Shift windows.</p>
+          </div>
+          <!-- Quick Route Presets -->
+          <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+            <span class="text-[11px] font-bold text-slate-400 mr-1">Quick Preset:</span>
+            <button type="button" data-preset="bkk_lhr" class="preset-btn px-2.5 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/40 text-xs font-bold text-purple-200 transition-all">
+              TG910 BKK–LHR (12:35h Block)
+            </button>
+            <button type="button" data-preset="bkk_nrt" class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-all">
+              TG640 BKK–NRT (06:10h Block)
+            </button>
+            <button type="button" data-preset="bkk_syd_2leg" class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-all">
+              2-Leg Augmented (14:15h FDP)
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- LEFT COLUMN: FLIGHT LEG STD/ETA & PAIRING INPUTS -->
+          <div class="lg:col-span-5 space-y-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+
+            <!-- Section A: Flight Leg STD & ETA Schedule -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-amber-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-xs font-extrabold uppercase tracking-wider text-amber-400">✈ 1. Flight Leg STD &amp; ETA Schedule</h3>
+                <span class="text-[10px] font-mono text-slate-400">Same Ref Time / UTC</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="simDepBase" class="block text-[11px] font-bold text-slate-300 mb-1">Departure Station (Table 7.2)</label>
+                  <select id="simDepBase" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-white">
+                    <option value="bkk" selected>Home Base BKK (1:45h Flight / 2:00h Cabin)</option>
+                    <option value="line">Line Station Outstation (1:15h All Crew)</option>
+                    <option value="vvip_bkk">BKK Royal/VVIP (2:45h Flight / 3:00h Cabin)</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="simSectors" class="block text-[11px] font-bold text-slate-300 mb-1">Number of Operating Legs</label>
+                  <select id="simSectors" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-white">
+                    <option value="1" selected>1 Operating Leg (Non-Stop)</option>
+                    <option value="2">2 Operating Legs (Multi-Sector)</option>
+                    <option value="3">3 Operating Legs (Max for Method 2)</option>
+                    <option value="4">4 Operating Legs (Unaugmented Only)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Leg 1 STD & ETA -->
+              <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-white">Leg 1 Schedule (Off-Block STD → On-Block ETA)</span>
+                  <span id="leg1BlockBadge" class="text-[11px] font-mono font-bold text-emerald-400">Block: 12:35h</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label for="leg1Std" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Leg 1 STD (HH:MM)</label>
+                    <input id="leg1Std" type="time" value="00:50" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs font-mono font-bold text-white" />
+                  </div>
+                  <div>
+                    <label for="leg1Eta" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Leg 1 ETA (HH:MM, +1d auto)</label>
+                    <input id="leg1Eta" type="time" value="13:25" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs font-mono font-bold text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Leg 2 STD & ETA (Shown when Sectors >= 2) -->
+              <div id="leg2Container" class="hidden p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-white">Leg 2 Schedule (STD → ETA)</span>
+                  <span id="leg2BlockBadge" class="text-[11px] font-mono font-bold text-emerald-400">Block: 02:30h</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label for="leg2Std" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Leg 2 STD (HH:MM)</label>
+                    <input id="leg2Std" type="time" value="14:40" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs font-mono font-bold text-white" />
+                  </div>
+                  <div>
+                    <label for="leg2Eta" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Leg 2 Final ETA (HH:MM)</label>
+                    <input id="leg2Eta" type="time" value="17:10" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs font-mono font-bold text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Leg 3 STD & ETA (Shown when Sectors >= 3) -->
+              <div id="leg3Container" class="hidden p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-white">Leg 3 Schedule (STD → Final ETA)</span>
+                  <span id="leg3BlockBadge" class="text-[11px] font-mono font-bold text-emerald-400">Block: 01:30h</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label for="leg3Std" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Leg 3 STD (HH:MM)</label>
+                    <input id="leg3Std" type="time" value="18:10" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs font-mono font-bold text-white" />
+                  </div>
+                  <div>
+                    <label for="leg3Eta" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Leg 3 Final ETA (HH:MM)</label>
+                    <input id="leg3Eta" type="time" value="19:40" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs font-mono font-bold text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Climb / Descent Buffer for In-Flight Rest -->
+              <div class="grid grid-cols-2 gap-2.5 pt-1">
+                <div>
+                  <label for="simClimbBuffer" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Post-T/O + Pre-Land Sterile Buffer</label>
+                  <select id="simClimbBuffer" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-xs text-white">
+                    <option value="60">1:00h total (30m climb + 30m desc)</option>
+                    <option value="75" selected>1:15h total (30m climb + 45m desc)</option>
+                    <option value="90">1:30h total (45m climb + 45m desc)</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="simCabinGroups" class="block text-[10px] font-semibold text-slate-400 mb-0.5">Cabin Crew Rest Rotation Shifts</label>
+                  <select id="simCabinGroups" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-xs text-white">
+                    <option value="2" selected>2 Rotation Shifts (Group A / Group B)</option>
+                    <option value="3">3 Rotation Shifts (Group A / B / C)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section B: In-Flight Rest Facility, Augmentation & Acclimatisation -->
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1.5">2. In-Flight Rest Class, Augmentation &amp; Acclimatisation</h3>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="simRestClass" class="block text-[11px] font-semibold text-slate-300 mb-1">Rest Facility Class (§7.2.4.2)</label>
+                <select id="simRestClass" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-2 text-xs font-semibold text-white">
+                  <option value="1" selected>Class 1 Bunk (A350 / B777 / B787)</option>
+                  <option value="2">Class 2 Lie-Flat Seat (45° Curtain)</option>
+                  <option value="3">Class 3 Reclined Seat (A330 Biz 33R/C)</option>
+                </select>
+              </div>
+              <div>
+                <label for="simAugment" class="block text-[11px] font-semibold text-slate-300 mb-1">Crew Augmentation / Extension</label>
+                <select id="simAugment" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-2 text-xs font-semibold text-white">
+                  <option value="m2_1p" selected>Method 2: +1 Pilot (3 Pilots Total)</option>
+                  <option value="m2_2p">Method 2: +2 Pilots (4 Pilots Total)</option>
+                  <option value="none">Unaugmented (Basic Table 7.3/7.4)</option>
+                  <option value="m1">Method 1: Planned (+1:00h, No Bunk)</option>
+                  <option value="m3_4h">Method 3: Split Duty (4h Ground Break)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label for="simTzDiff" class="block text-[11px] font-semibold text-slate-300 mb-1">TZ Diff from Ref</label>
+                <select id="simTzDiff" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+                  <option value="2">&lt; 4:00 hrs</option>
+                  <option value="5">4:00 – 6:00h</option>
+                  <option value="7" selected>6:01 – 9:00h</option>
+                  <option value="10">9:01 – 12:00h</option>
+                </select>
+              </div>
+              <div>
+                <label for="simElapsed" class="block text-[11px] font-semibold text-slate-300 mb-1">Elapsed Ref Hrs</label>
+                <select id="simElapsed" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+                  <option value="24" selected>&lt; 48:00h (B)</option>
+                  <option value="60">48–71:59h</option>
+                  <option value="84">72–95:59h</option>
+                  <option value="108">96–119:59h</option>
+                  <option value="130">&ge; 120:00h (D)</option>
+                </select>
+              </div>
+              <div>
+                <label for="simDiscretion" class="block text-[11px] font-semibold text-slate-300 mb-1">PIC Discretion</label>
+                <select id="simDiscretion" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+                  <option value="0" selected>None (+0h)</option>
+                  <option value="1">+1:00h</option>
+                  <option value="2">+2:00h (Unaug)</option>
+                  <option value="3">+3:00h (Aug)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Section C: PSWM Fatigue Inputs -->
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1.5 pt-1">3. Prior Sleep Wake Model (PSWM — §7.3.13.2)</h3>
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label for="simSleep24" class="block text-[11px] font-semibold text-slate-300 mb-1">Sleep (24h)</label>
+                <select id="simSleep24" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+                  <option value="2">&le; 2h (12p)</option>
+                  <option value="3">3h (8p)</option>
+                  <option value="4">4h (4p)</option>
+                  <option value="6" selected>&ge; 5h (0p)</option>
+                </select>
+              </div>
+              <div>
+                <label for="simSleep48" class="block text-[11px] font-semibold text-slate-300 mb-1">Sleep (48h)</label>
+                <select id="simSleep48" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+                  <option value="8">&le; 8h (8p)</option>
+                  <option value="9">9h (6p)</option>
+                  <option value="10">10h (4p)</option>
+                  <option value="11">11h (2p)</option>
+                  <option value="13" selected>&ge; 12h (0p)</option>
+                </select>
+              </div>
+              <div>
+                <label for="simAwake" class="block text-[11px] font-semibold text-slate-300 mb-1">Hrs Awake (48h)</label>
+                <input id="simAwake" type="number" min="4" max="40" value="10" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: COMPUTED STD/ETA TIMELINE, IN-FLIGHT REST & RULE TRACE -->
+          <div class="lg:col-span-7 space-y-4">
+            <!-- Top Row: 4 Core Computed Metrics -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                <div class="text-[11px] text-slate-400 font-semibold">Report Time (Table 7.2)</div>
+                <div id="simOutReportClock" class="text-base font-extrabold text-emerald-400 mt-1 font-mono">FC 23:05 / CC 22:50</div>
+                <div id="simOutReportSub" class="text-[11px] text-slate-400 mt-0.5">State B (Peak/Night)</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                <div class="text-[11px] text-slate-400 font-semibold">Actual FDP (Report → ETA)</div>
+                <div id="simOutActualFdp" class="text-base font-extrabold text-sky-400 mt-1 font-mono">FC 14:20 / CC 14:35</div>
+                <div id="simOutActualSub" class="text-[11px] text-slate-400 mt-0.5">Block: 12:35h (+1h Bonus!)</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                <div class="text-[11px] text-slate-400 font-semibold">Max Legal FDP Ceiling</div>
+                <div id="simOutTotalFdp" class="text-base font-extrabold text-amber-400 mt-1 font-mono">17:00 hrs</div>
+                <div id="simOutTotalSub" class="text-[11px] text-slate-400 mt-0.5">✓ LEGAL (Margin +2:40h)</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800">
+                <div class="text-[11px] text-slate-400 font-semibold">Min In-Flight Rest Req.</div>
+                <div id="simOutInflightRest" class="text-base font-extrabold text-purple-400 mt-1 font-mono">FC 2:00h / CC 1:45h</div>
+                <div id="simOutInflightSub" class="text-[11px] text-slate-400 mt-0.5">Table 7.7 (Class 1 Bunk)</div>
+              </div>
+            </div>
+
+            <!-- DEDICATED IN-FLIGHT REST & STD/ETA TIMELINE PLANNER CARD -->
+            <div class="bg-slate-900 border-2 border-purple-500/40 rounded-2xl p-4 space-y-3.5 shadow-xl">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                <div>
+                  <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+                    <span class="text-amber-400">🛏️</span> In-Flight Rest Calculation &amp; Shift Timeline (STD → ETA)
+                  </h3>
+                  <p id="inflightSummaryHeadline" class="text-xs text-slate-300 mt-0.5">Calculated from Leg STD/ETA and Cruise Window</p>
+                </div>
+                <span id="inflightLegalityBadge" class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  ✓ REST WINDOW FEASIBLE
+                </span>
+              </div>
+
+              <!-- Visual Horizontal Duty & Rest Timeline Bar -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-[11px] font-mono text-slate-300">
+                  <span id="tlLabelReport">Report: 23:05</span>
+                  <span id="tlLabelStd">STD: 00:50</span>
+                  <span id="tlLabelCruise" class="text-amber-300 font-bold">Usable Cruise Rest Window: 11:20h</span>
+                  <span id="tlLabelEta">ETA: 13:25</span>
+                  <span id="tlLabelOffDuty">Off-Duty: 13:55</span>
+                </div>
+                <div class="h-7 w-full rounded-xl bg-slate-950 border border-slate-700 overflow-hidden flex text-[10px] font-extrabold text-white">
+                  <div class="bg-emerald-700/80 flex items-center justify-center px-1.5 shrink-0" style="width: 14%;" title="Pre-Flight Briefing &amp; Boarding">Briefing</div>
+                  <div class="bg-sky-700/80 flex items-center justify-center px-1 shrink-0" style="width: 7%;" title="Takeoff &amp; Top of Climb">Climb</div>
+                  <div id="tlBarCruise" class="bg-gradient-to-r from-purple-700 via-indigo-600 to-amber-600 flex items-center justify-around px-2 flex-1" title="In-Flight Cruise Rest Window">
+                    <span id="tlBarShift1">Shift 1</span>
+                    <span id="tlBarShift2">Shift 2</span>
+                    <span id="tlBarShift3" class="hidden">Shift 3</span>
+                  </div>
+                  <div class="bg-sky-700/80 flex items-center justify-center px-1 shrink-0" style="width: 7%;" title="Top of Descent &amp; Landing">Desc</div>
+                  <div class="bg-slate-700 flex items-center justify-center px-1.5 shrink-0" style="width: 8%;" title="Min 30m Post-Flight Duty">+30m</div>
+                </div>
+              </div>
+
+              <!-- Detailed Breakdown Grid: Flight Crew vs Cabin Crew In-Flight Rest -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <!-- Flight Crew Box -->
+                <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-extrabold text-sky-300">👨‍✈️ Flight Crew In-Flight Rest (§7.2.4.2 (3))</span>
+                    <span id="fcAugBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300">+1 Pilot (Cl.1)</span>
+                  </div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Actual Flight Crew FDP:</span> <strong id="fcActualFdpText" class="text-white font-mono">14:20 hrs</strong> <span id="fcMaxFdpText" class="text-slate-400">(Max 17:00h)</span></div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Landing Crew Min Rest:</span> <strong class="text-amber-300 font-mono">2:00 hrs consecutive</strong></div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Relief Crew Min Rest:</span> <strong class="text-white font-mono">1:30 hrs consecutive</strong></div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Max Equal Share per Pilot:</span> <strong id="fcEqualShareText" class="text-emerald-300 font-mono">3:46 hrs each</strong></div>
+                </div>
+
+                <!-- Cabin Crew Box -->
+                <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-extrabold text-purple-300">👩‍✈️ Cabin Crew In-Flight Rest (Table 7.7)</span>
+                    <span id="ccBandBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">FDP 14:31–15:00h</span>
+                  </div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Actual Cabin Crew FDP:</span> <strong id="ccActualFdpText" class="text-white font-mono">14:35 hrs</strong> <span class="text-slate-400">(Report → ETA)</span></div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Table 7.7 Min Required Rest:</span> <strong id="ccMinRestText" class="text-amber-300 font-mono">1:45 hrs per crew</strong></div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Total Needed (<span id="ccShiftCountLbl">2</span> Shifts):</span> <strong id="ccTotalShiftNeedText" class="text-white font-mono">3:30 hrs cruise</strong></div>
+                  <div class="text-slate-300">• <span class="text-slate-400">Suggested Shift Windows:</span> <strong id="ccShiftClockText" class="text-emerald-300 font-mono">01:20–06:55 / 07:05–12:40</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step-by-Step Rule Trace -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-extrabold text-white">Active Regulatory Trace (Click any step to locate on Graph)</h3>
+                <span id="simOutPswmBadge" class="text-xs font-extrabold text-emerald-400">PSWM: 0 pts (Acceptable)</span>
+              </div>
+              <div id="simRuleTrace" class="space-y-2 text-xs"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: MASTER REFERENCE TABLES -->
+    <section id="viewTablesContainer" class="hidden flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-950 selectable-text">
+      <div class="max-w-6xl mx-auto space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <span class="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">THAI FTL Guideline • High-Visibility Study Cards</span>
+          <h2 class="text-xl font-extrabold text-white mt-0.5">Master Reference Tables (OM-A Chapter 7 TR001/02)</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Clean, high-contrast summary tables for instant lookup of Acclimatisation, Reporting, Basic FDP, Table 7.7 Cabin Crew In-Flight Rest, and Recovery Rest.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Table 7.1 -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-extrabold text-sky-300">Table 7.1 — Acclimatisation State (B / X / D)</h3>
+              <span class="text-xs font-mono text-slate-400">OM-A p. 7-2</span>
+            </div>
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-300">
+                  <th class="py-2 text-left">TZ Diff (h)</th>
+                  <th class="py-2 text-left">&lt; 48h</th>
+                  <th class="py-2 text-left">48–71:59h</th>
+                  <th class="py-2 text-left">72–95:59h</th>
+                  <th class="py-2 text-left">96–119:59h</th>
+                  <th class="py-2 text-left">&ge; 120h</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800 text-slate-200 font-mono">
+                <tr><td class="py-2 font-sans font-bold">&lt; 4:00h</td><td colspan="5" class="py-2 text-emerald-300 font-sans font-semibold">Always Acclimatised to Reference Time (State B)</td></tr>
+                <tr><td class="py-2 font-sans font-bold">4:00 – 6:00h</td><td class="py-2 text-sky-300 font-extrabold">B</td><td class="py-2 text-amber-300 font-extrabold">X</td><td class="py-2 text-emerald-300 font-extrabold">D</td><td class="py-2 text-emerald-300 font-extrabold">D</td><td class="py-2 text-emerald-300 font-extrabold">D</td></tr>
+                <tr><td class="py-2 font-sans font-bold">6:01 – 9:00h</td><td class="py-2 text-sky-300 font-extrabold">B</td><td class="py-2 text-amber-300 font-extrabold">X</td><td class="py-2 text-amber-300 font-extrabold">X</td><td class="py-2 text-emerald-300 font-extrabold">D</td><td class="py-2 text-emerald-300 font-extrabold">D</td></tr>
+                <tr><td class="py-2 font-sans font-bold">9:01 – 12:00h</td><td class="py-2 text-sky-300 font-extrabold">B</td><td class="py-2 text-amber-300 font-extrabold">X</td><td class="py-2 text-amber-300 font-extrabold">X</td><td class="py-2 text-amber-300 font-extrabold">X</td><td class="py-2 text-emerald-300 font-extrabold">D</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table 7.7 Cabin Crew In-Flight Rest -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-extrabold text-amber-300">Table 7.7 — Minimum In-Flight Rest for Cabin Crew</h3>
+              <span class="text-xs font-mono text-slate-400">OM-A §7.2.4.2 (p. 7-15)</span>
+            </div>
+            <table class="w-full text-xs border-collapse font-mono">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-300 font-sans">
+                  <th class="py-1.5 text-left">Extended FDP</th>
+                  <th class="py-1.5 text-left text-sky-300">Class 1 Bunk</th>
+                  <th class="py-1.5 text-left text-purple-300">Class 2 Seat</th>
+                  <th class="py-1.5 text-left text-amber-300">Class 3 Seat</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800 text-slate-200">
+                <tr><td class="py-1 font-sans font-semibold">Up to 14:30 hrs</td><td>1:30</td><td>1:30</td><td>1:30</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">14:31 – 15:00 hrs</td><td>1:45</td><td>2:00</td><td>2:20</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">15:01 – 15:30 hrs</td><td>2:00</td><td>2:20</td><td>2:40</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">15:31 – 16:00 hrs</td><td>2:15</td><td>2:40</td><td>3:00</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">16:01 – 16:30 hrs</td><td>2:35</td><td>3:00</td><td>3:20</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">16:31 – 17:00 hrs</td><td>3:00</td><td>3:25</td><td>3:40</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">17:01 – 17:30 hrs</td><td>3:25</td><td>4:10</td><td class="text-rose-400">Not Allowed</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">17:31 – 18:00 hrs</td><td>3:50</td><td>4:50</td><td class="text-rose-400">Not Allowed</td></tr>
+                <tr><td class="py-1 font-sans font-semibold">18:01 – 18:30 hrs*</td><td>4:30</td><td>5:35</td><td class="text-rose-400">Not Allowed</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Table 7.3 & 7.4 -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:col-span-2">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-extrabold text-purple-300">Tables 7.3, 7.4 &amp; 7.5 — Basic Maximum Daily FDP</h3>
+              <span class="text-xs font-mono text-slate-400">OM-A §7.2.3 (pp. 7-11 to 7-13)</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs border-collapse font-mono">
+                <thead>
+                  <tr class="border-b border-slate-700 text-slate-300 font-sans">
+                    <th class="py-2 text-left">Start Time / State</th>
+                    <th class="py-2 text-left">1–2 Sect</th>
+                    <th class="py-2 text-left">3 Sect</th>
+                    <th class="py-2 text-left">4 Sect</th>
+                    <th class="py-2 text-left">5 Sect</th>
+                    <th class="py-2 text-left">6 Sect</th>
+                    <th class="py-2 text-left">7 Sect</th>
+                    <th class="py-2 text-left">8–10 Sect</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 text-slate-200">
+                  <tr><td class="py-2 font-sans font-bold text-emerald-300">06:00 – 13:29 (Peak Day)</td><td>13:00</td><td>12:30</td><td>12:00</td><td>11:30</td><td>11:00</td><td>10:30</td><td>10:00 / 09:00</td></tr>
+                  <tr><td class="py-2 font-sans font-bold">13:30 – 14:59 (Afternoon)</td><td>12:45–12:15</td><td>12:15–11:45</td><td>11:45–11:15</td><td>11:15–10:45</td><td>10:45–10:15</td><td>10:15–09:45</td><td>09:45–09:00</td></tr>
+                  <tr><td class="py-2 font-sans font-bold">15:00 – 16:59 (Late Afternoon)</td><td>12:00–11:15</td><td>11:30–10:45</td><td>11:00–10:15</td><td>10:30–09:45</td><td>10:00–09:15</td><td>09:30–09:00</td><td>09:00</td></tr>
+                  <tr><td class="py-2 font-sans font-bold text-rose-300">17:00 – 04:59 (Night / WOCL)</td><td>11:00</td><td>10:30</td><td>10:00</td><td>09:30</td><td>09:00</td><td>09:00</td><td>09:00</td></tr>
+                  <tr><td class="py-2 font-sans font-bold">05:00 – 05:59 (Early Start)</td><td>12:00–12:45</td><td>11:30–12:15</td><td>11:00–11:45</td><td>10:30–11:15</td><td>10:00–10:45</td><td>09:30–10:15</td><td>09:00–09:45</td></tr>
+                  <tr class="bg-amber-950/25"><td class="py-2 font-sans font-extrabold text-amber-300">State X (Unknown — Table 7.4 / 7.5)</td><td>11:00 (12:00 FRM)</td><td>10:30 (11:30)</td><td>10:00 (11:00)</td><td>09:30 (10:30)</td><td>09:00</td><td>09:00</td><td>09:00</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PATH FINDER MODAL -->
+    <div id="pathModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+            <span class="text-sky-400">⟐</span> Trace Regulatory Path
+          </h3>
+          <button id="closePathModalBtn" type="button" class="text-slate-400 hover:text-white text-sm">✕</button>
+        </div>
+        <p class="text-xs text-slate-400">Select any two topics in the THAI FTL Guideline to highlight the shortest regulatory link between them.</p>
+        <div class="space-y-3">
+          <div>
+            <label for="pathStartSelect" class="block text-xs font-bold text-slate-300 mb-1">From Topic</label>
+            <select id="pathStartSelect" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-white"></select>
+          </div>
+          <div>
+            <label for="pathEndSelect" class="block text-xs font-bold text-slate-300 mb-1">To Topic</label>
+            <select id="pathEndSelect" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-white"></select>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button id="cancelPathBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold text-slate-300 hover:text-white">Cancel</button>
+          <button id="runPathFinderBtn" type="button" class="px-4 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-xs font-extrabold text-slate-950">Highlight Chain</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- APPLICATION SCRIPT -->
+  <script>
+    // =========================================================================
+    // 1. TOPIC CLUSTERS & NODES (High-Visibility 3x2 Board + 6-Column Flow)
+    // =========================================================================
+    const LAYER_META = {
+      foundation: {
+        num: '1',
+        name: '1. CLOCK & DEFINITIONS',
+        sub: 'WOCL, Acclimatisation & Fleet Rest Classes',
+        color: '#38BDF8',
+        headerBg: '#0284C7',
+        bg: 'rgba(14, 165, 233, 0.10)',
+        border: '#0284C7',
+        bx: 210, by: 40, bw: 340, bh: 430,
+        fx: 190, fy: 40, fw: 310, fh: 460
+      },
+      reporting: {
+        num: '2',
+        name: '2. REPORTING & CAPS',
+        sub: 'Table 7.2 Report Times, Positioning & 28d/12m Caps',
+        color: '#34D399',
+        headerBg: '#059669',
+        bg: 'rgba(16, 185, 129, 0.10)',
+        border: '#059669',
+        bx: 590, by: 40, bw: 340, bh: 430,
+        fx: 530, fy: 40, fw: 310, fh: 460
+      },
+      fdp: {
+        num: '3',
+        name: '3. BASIC MAX FDP',
+        sub: 'Tables 7.3 / 7.4 / 7.5 & Cabin Crew Difference',
+        color: '#C084FC',
+        headerBg: '#7C3AED',
+        bg: 'rgba(168, 85, 247, 0.10)',
+        border: '#7C3AED',
+        bx: 970, by: 40, bw: 340, bh: 430,
+        fx: 870, fy: 40, fw: 310, fh: 460
+      },
+      extension: {
+        num: '4',
+        name: '4. FDP EXTENSIONS & OPS',
+        sub: 'Methods 1 / 2 / 3, PIC Discretion & Delays',
+        color: '#FBBF24',
+        headerBg: '#D97706',
+        bg: 'rgba(245, 158, 11, 0.10)',
+        border: '#D97706',
+        bx: 210, by: 510, bw: 340, bh: 430,
+        fx: 1210, fy: 40, fw: 310, fh: 460
+      },
+      rest: {
+        num: '5',
+        name: '5. STANDBY & REST RECOVERY',
+        sub: 'Standby, Reserve, Daily Rest, RERRP & TZ Table 7.10',
+        color: '#FB7185',
+        headerBg: '#E11D48',
+        bg: 'rgba(244, 63, 94, 0.10)',
+        border: '#E11D48',
+        bx: 590, by: 510, bw: 340, bh: 430,
+        fx: 1550, fy: 40, fw: 310, fh: 460
+      },
+      frms: {
+        num: '6',
+        name: '6. FRMS & PSWM FATIGUE',
+        sub: 'FSAG Oversight, Samn-Perelli & 3-Step PSWM Score',
+        color: '#2DD4BF',
+        headerBg: '#0D9488',
+        bg: 'rgba(20, 184, 166, 0.10)',
+        border: '#0D9488',
+        bx: 970, by: 510, bw: 340, bh: 430,
+        fx: 1890, fy: 40, fw: 310, fh: 460
+      }
+    };
+
+    const GRAPH_NODES = [
+      // GROUP 1: CLOCK & DEFINITIONS
+      {
+        id: 'wocl_night',
+        label: 'WOCL & Night Duty',
+        badge: '02:00–05:59 WOCL • Max 4 Sect Night',
+        section: '§7.1.2 / §7.2.5',
+        page: '7-3, 7-19',
+        layer: 'foundation',
+        trUpdated: true,
+        slot: 0,
+        keyMetric: 'WOCL: 02:00–05:59 | Night Duty: 02:00–04:59 (Max 4 sectors on consecutive nights)',
+        personas: {
+          overview: 'The body clock is lowest between 02:00 and 05:59 (WOCL). Any duty touching 02:00–04:59 is a Night Duty.',
+          crew: 'Check if your FDP touches 02:00–05:59 (WOCL)—it restricts Planned Extensions (Method 1) and Split Duty accommodation rules. Consecutive night duties are capped at 4 sectors.',
+          dispatcher: 'Apply Appropriate FRM when scheduling consecutive night duties (max 4 sectors). Rank night duties by Top-of-Descent (TOD) circadian risk (3 subtypes in §7.2.5).',
+          safety: 'Monitor consecutive Night Duties encroaching 02:00–04:59; subtype 1 (full WOCL overlap at TOD) carries highest fatigue weight.'
+        },
+        bullets: [
+          'Window of Circadian Low (WOCL): 02:00 to 05:59 reference time.',
+          'Night Duty: Any duty period encroaching any portion of 02:00 to 04:59 in the acclimatised time zone.',
+          'Consecutive Night Duties: Capped at a maximum of 4 operating sectors per duty with Appropriate FRM applied.',
+          'Local Night: 8:00 consecutive hours falling between 22:00 and 08:00 local time.'
+        ],
+        diffNote: 'TR001/02 formalizes TCAR ORO.FTL.105 Night Duty (02:00–04:59) distinct from WOCL (02:00–05:59) and adds the 3-tier TOD fatigue risk ranking in §7.2.5.',
+        tags: ['WOCL (02:00–05:59)', 'Night Duty (02:00–04:59)', 'Local Night (22:00–08:00)']
+      },
+      {
+        id: 'disruptive_sched',
+        label: 'Disruptive Schedules',
+        badge: 'Early 05:00–05:59 • Late 23:00–01:59',
+        section: '§7.1.2 / §7.2.11.2',
+        page: '7-3, 7-26',
+        layer: 'foundation',
+        trUpdated: true,
+        slot: 1,
+        keyMetric: 'Early Start: 05:00–05:59 | Late Finish: 23:00–01:59 | ≥4 Disruptive → 60h RERRP',
+        personas: {
+          overview: 'THAI follows the "Early Type" disruptive schedule regime: starting 05:00–05:59 or finishing 23:00–01:59.',
+          crew: 'Transitioning from a Late Finish/Night Duty to an Early Start at Home Base (BKK) requires at least 1 Local Night of rest. 4+ disruptive duties between RERRPs boost your second RERRP to 60 hours.',
+          dispatcher: 'Cannot pair a Late Finish (23:00–01:59) or Night Duty before an Early Start (05:00–05:59) at BKK without inserting 1 Local Night.',
+          safety: 'Verify CrewSE flags ≥4 disruptive duties between two RERRPs so the second RERRP is extended from 36h to 60h.'
+        },
+        bullets: [
+          'Early Start Duty: Starts in the period 05:00 to 05:59 (acclimatised time).',
+          'Late Finish Duty: Finishes in the period 23:00 to 01:59 (acclimatised time).',
+          'Transition Rule at Home Base (BKK): Moving from a Late Finish or Night Duty to an Early Start requires a minimum of 1 Local Night in between.',
+          'Recovery Penalty: Performing 4 or more disruptive duties between two RERRPs increases the second RERRP to 60:00 hours.'
+        ],
+        diffNote: 'Adopted under TCAR ORO.FTL ("Early type" operator classification) with mandatory 60-hour RERRP recovery trigger.',
+        tags: ['Early Start (05:00–05:59)', 'Late Finish (23:00–01:59)', '60h RERRP Trigger']
+      },
+      {
+        id: 'acclim_table',
+        label: 'Acclimatisation (Table 7.1)',
+        badge: 'State B (<48h) • State X • State D',
+        section: '§7.1.2 (Table 7.1)',
+        page: '7-2',
+        layer: 'foundation',
+        trUpdated: true,
+        slot: 2,
+        keyMetric: 'TZ < 4h = Always State B | TZ ≥ 4h: <48h = B, 48–119h = X, ≥72/96/120h = D',
+        personas: {
+          overview: 'Determines which clock your body is on: State B (Departure/Home), State X (Unknown), or State D (Destination Local).',
+          crew: 'Always determine your State (B, X, or D) FIRST before looking up Max FDP. Within 48 hours of leaving BKK, you are always in State B (use BKK time!).',
+          dispatcher: 'Table 7.1 governs whether a layover crew uses Table 7.3 (State B or D) or Table 7.4/7.5 (State X) for return sector FDP.',
+          safety: 'State X restricts max daily FDP to 11:00h (12:00h under FRM) and bars Method 1 planned extensions.'
+        },
+        bullets: [
+          'Time Zone Difference < 4:00h: Crew remains acclimatised to Home Base / Reference Time (State B).',
+          'State B (Acclimatised to Departure): < 48:00h elapsed since reporting at reference time, regardless of TZ difference.',
+          'State X (Unknown State of Acclimatisation): 48:00–71:59h (for 4–6h TZ diff), 48:00–95:59h (for 6:01–9h TZ diff), or 48:00–119:59h (for 9:01–12h TZ diff).',
+          'State D (Acclimatised to Current Local Time): ≥ 72:00h (4–6h TZ), ≥ 96:00h (6:01–9h TZ), or ≥ 120:00h (9:01–12h TZ).'
+        ],
+        tableTitle: 'Table 7.1 — Acclimatisation State Lookup',
+        tableHeaders: ['TZ Diff', '< 48h', '48–71:59h', '72–95:59h', '96–119:59h', '≥ 120h'],
+        tableRows: [
+          ['4:00 – 6:00h', 'B', 'X', 'D', 'D', 'D'],
+          ['6:01 – 9:00h', 'B', 'X', 'X', 'D', 'D'],
+          ['9:01 – 12:00h', 'B', 'X', 'X', 'X', 'D']
+        ],
+        diffNote: 'Replaces legacy AOCR zone rules with TCAR ORO.FTL Table 7.1 B/X/D state machine.',
+        tags: ['State B (Departure)', 'State X (Unknown)', 'State D (Destination)']
+      },
+      {
+        id: 'accomm_defs',
+        label: 'Rest Facilities & Fleet Classes',
+        badge: 'A350/777/787 = Cl.1 • A330 Biz = Cl.3',
+        section: '§7.1.2 / §7.2.4.2',
+        page: '7-2, 7-15, 7-16',
+        layer: 'foundation',
+        trUpdated: true,
+        slot: 3,
+        keyMetric: 'Bunks (A350/B777/B787) = Class 1 | A330 Biz (33R/33C) = Class 3 | Home Base = BKK',
+        personas: {
+          overview: 'Defines ground rooms (Accommodation vs. Suitable Accommodation) and onboard crew rest bunks/seats (Class 1, 2, 3).',
+          crew: 'Know your aircraft rest class: A350/B777/B787 bunks are Class 1 (allows up to 16h/17h FDP, +1h if >9h leg). A330 Business (33R/33C) is Class 3 (14h/15h FDP). Economy seats do NOT qualify for in-flight rest extensions.',
+          dispatcher: 'Split duty ≥6h or touching WOCL requires Suitable Accommodation (individual quiet room with bed). Rosters published ≥14d ahead; >33% seasonal FDP exceedance requires schedule redesign (§7.1.3).',
+          safety: 'Refer to p. 7-16 THAI Fleet Evaluation Table when auditing augmented pairings on A330/B787/B777/A350.'
+        },
+        bullets: [
+          'Class 1 Onboard Rest Facility: Bunk flat bed separate from cockpit/cabin (THAI A350-900, B777-200ER, B777-300ER, B787-8/9 Overhead Bunks = PASS Class 1).',
+          'Class 2 & Class 3 Onboard Rest: Class 2 = 45° lie-flat with curtain; Class 3 = 40° recline with leg/foot support (THAI A330-300 33R/33C Business Seat = PASS Class 3; Economy = FAIL).',
+          'Suitable Accommodation (Ground): Separate individual quiet bedroom with temperature/light control (required for Split Duty ≥6h or touching WOCL).',
+          'Home Base & Roster Robustness (§7.1.3 / §7.2.1): BKK is Home Base (72h RERRP w/ 3 LN on base change). Rosters published 14 days ahead; >33% seasonal exceedance requires schedule change.'
+        ],
+        diffNote: 'TR001/02 p. 7-16 embeds the exact THAI aircraft fleet evaluation matrix mapping every sub-fleet to Class 1, 2, or 3.',
+        tags: ['Class 1 Bunk', 'Class 3 Seat', 'Suitable Accommodation', '33% Robustness Rule']
+      },
+
+      // GROUP 2: REPORTING & CUMULATIVE CAPS
+      {
+        id: 'reporting_times',
+        label: 'Reporting & Sleep Window',
+        badge: 'BKK 1:45h / 2:00h • Line 1:15h • No Call 00–04h',
+        section: '§7.2.2 (Table 7.2)',
+        page: '7-8 to 7-10',
+        layer: 'reporting',
+        trUpdated: true,
+        slot: 0,
+        keyMetric: 'BKK: Flight 1:45h / Cabin 2:00h | Line: 1:15h | Post-Flight: 0:30h | No Calls: 00:00–04:00',
+        personas: {
+          overview: 'Sets when duty and FDP start prior to STD at BKK vs. outstations, and protects 00:00–04:00 sleep from routine calls.',
+          crew: 'At BKK, Flight Crew report 1:45h before STD and Cabin Crew report 2:00h before STD. At Line Stations or Positioning, everyone reports 1:15h before STD. Between 00:00 and 04:00 local, OP-1 cannot phone you for routine changes!',
+          dispatcher: 'VVIP flights add +1:00h to reporting time. Routine roster changes require 72h–24h notice; respect the 00:00–04:00 sleep protection window strictly.',
+          safety: 'Local hotel-to-airport transfer at line stations is not part of duty, but transfer >30m each way increases minimum rest (§7.2.2.2 / §7.2.11).'
+        },
+        bullets: [
+          'Home Base (BKK) Regular Flight: Flight Crew 1:45h, Cabin Crew 2:00h prior to STD.',
+          'Line Station Regular Flight & Positioning (Deadhead): 1:15h prior to STD for both Flight and Cabin Crew.',
+          'Royal / VVIP Flights: +1:00h earlier (2:45h / 3:00h at BKK; 2:15h at Line). MCF & Delivery: 1:00h prior. Minimum post-flight duty = 0:30h.',
+          'Sleep Protection Window (§7.2.2.4): No routine phone calls between 00:00 and 04:00 local time; minor changes (<24h & <1h diff) relayed via PIC/SCCM.'
+        ],
+        tableTitle: 'Table 7.2 — THAI Standard Reporting Times Prior to STD',
+        tableHeaders: ['Duty Type', 'Home Base (BKK)', 'Line Station'],
+        tableRows: [
+          ['Regular Flight (Flight / Cabin)', '1:45 hr / 2:00 hr', '1:15 hr / 1:15 hr'],
+          ['Royal / VVIP Flight (Flight / Cabin)', '2:45 hr / 3:00 hr', '2:15 hr / 2:15 hr'],
+          ['Positioning (Deadhead)', '1:15 hr', '1:15 hr'],
+          ['MCF & Delivery Flight', '1:00 hr', '1:00 hr']
+        ],
+        diffNote: 'Codifies Table 7.2 reporting standards and the 00:00–04:00 local sleep-protection window.',
+        tags: ['Table 7.2', 'BKK 1:45h / 2:00h', 'Line 1:15h', '00:00–04:00 No-Call']
+      },
+      {
+        id: 'positioning_rules',
+        label: 'Positioning (Deadhead) Rules',
+        badge: 'Pre-Op = FDP + DP (0 Sect) • Post-Op = DP Only',
+        section: '§7.2.8',
+        page: '7-22',
+        layer: 'reporting',
+        trUpdated: false,
+        slot: 1,
+        keyMetric: 'Before Operating = Counts as FDP + DP (NOT a Sector) | After Operating = DP Only',
+        personas: {
+          overview: 'Positioning before flying counts toward your FDP clock (but not as a sector). Positioning after flying only counts toward Duty Period (DP) and rest.',
+          crew: 'If you deadhead to an outstation and immediately operate a flight back, your FDP clock started when you reported for the deadhead—but the deadhead does NOT count as a sector in Table 7.3!',
+          dispatcher: 'Pre-operating positioning reduces available operating FDP time; post-operating positioning increases total DP (which increases subsequent minimum rest).',
+          safety: 'Ensure post-flight positioning is included in cumulative 60/110/190h duty totals and preceding-DP rest calculations.'
+        },
+        bullets: [
+          'Positioning Prior to Operating: Counts as part of the FDP, counts as Duty Period (DP), but does NOT count as an operating sector when looking up Table 7.3.',
+          'Positioning After Operating: Does NOT count as FDP, but counts in full toward Duty Period (DP) cumulative caps and minimum rest calculations.',
+          'All Positioning: Always counts toward the 60h (7d), 110h (14d), and 190h (28d) cumulative duty limits.'
+        ],
+        diffNote: 'Aligned with TCAR ORO.FTL.215 positioning rules.',
+        tags: ['Positioning', 'Deadhead', 'FDP vs DP', 'Not a Sector']
+      },
+      {
+        id: 'cumulative_caps',
+        label: 'Cumulative Duty & Flight Caps',
+        badge: 'Duty 60/110/190h • Flight 100h/28d & 1,000/1,200h',
+        section: '§7.2.7',
+        page: '7-21 to 7-22',
+        layer: 'reporting',
+        trUpdated: true,
+        slot: 2,
+        keyMetric: 'Duty: 60h/7d, 110h/14d, 190h/28d | Flight: 100h/28d & 1,000h (Flight) / 1,200h (Cabin) per 12m',
+        personas: {
+          overview: 'Hard ceilings on total Duty Hours and Block Flight Hours across rolling 7/14/28 days and 12 calendar months.',
+          crew: 'Watch your rolling 7/14/28-day duty totals (60/110/190h) and 28-day flight time (100h). Annual flight cap is 1,000h for Pilots and 1,200h for Cabin Crew.',
+          dispatcher: 'Spread cumulative duty evenly. Remember Airport Standby counts 100% toward DP and Home/Hotel Standby counts 25% toward DP.',
+          safety: 'Audit 28-day (100h flight / 190h duty) and 12-calendar-month caps across Fleet and Cabin divisions.'
+        },
+        bullets: [
+          'Cumulative Duty Periods (DP): Max 60 hours in any 7 consecutive days; 110 hours in 14 consecutive days; 190 hours in 28 consecutive days.',
+          '28-Day Flight Time: Max 100 block hours in any 28 consecutive days.',
+          '12-Calendar-Month Flight Time: Max 1,000 hours for Flight Crew; Max 1,200 hours for Cabin Crew.',
+          'Post-Flight Duty Floor: Minimum 30 minutes after block-in is always counted as duty.'
+        ],
+        diffNote: 'Adopts the 60h/7d, 110h/14d, 190h/28d TCAR ORO.FTL.210 duty caps while retaining the 1,000h (Flight) / 1,200h (Cabin) 12-month limits.',
+        tags: ['60/110/190h Duty Caps', '100h/28d Flight Cap', '1,000h / 1,200h Annual']
+      },
+
+      // GROUP 3: BASIC MAX FDP
+      {
+        id: 'basic_fdp_b_d',
+        label: 'Basic FDP: State B & D (Table 7.3)',
+        badge: 'Peak 13:00h • Night 11:00h • −30m/Sect',
+        section: '§7.2.3.1 (Table 7.3)',
+        page: '7-11',
+        layer: 'fdp',
+        trUpdated: true,
+        slot: 0,
+        keyMetric: 'Peak (06:00–13:29): 13:00h (1–2 sect) | Night (17:00–04:59): 11:00h | −30m/sector to 09:00h',
+        personas: {
+          overview: 'The master lookup table for daily Max FDP when crew are acclimatised (State B or State D).',
+          crew: 'Memorize the two anchor plateaus for 1–2 sectors: 06:00–13:29 = 13:00h, and 17:00–04:59 = 11:00h. Every additional sector above 2 subtracts 30 minutes down to the 09:00h floor.',
+          dispatcher: 'Use departure reference time when in State B, and local layover time when in State D. Afternoon shoulder (13:30–16:59) steps down by 15m/30m every 30 minutes.',
+          safety: 'Baseline FDP prior to any Method 1/2/3 extension. If PIC discretion is used on a Method 1 flight, calculate discretion from THIS table, not Table 7.6.'
+        },
+        bullets: [
+          'Peak Window (06:00–13:29): 13:00h for 1–2 sectors; tapers by 30m per sector (3=12:30, 4=12:00, 5=11:30, 6=11:00, 7=10:30, 8=10:00, 9=09:30, 10=09:00).',
+          'Afternoon Taper (13:30–16:59): Steps down from 12:45h (13:30) to 11:15h (16:30) for 1–2 sectors.',
+          'Night / WOCL Window (17:00–04:59): 11:00h for 1–2 sectors; tapers by 30m per sector (3=10:30, 4=10:00, 5=09:30, 6–10=09:00).',
+          'Early Window (05:00–05:59): Steps up from 12:00h (05:00–05:14) to 12:45h (05:45–05:59) for 1–2 sectors.'
+        ],
+        tableTitle: 'Table 7.3 — Basic Max Daily FDP (Acclimatised B or D)',
+        tableHeaders: ['Start Time', '1–2 Sect', '3 Sect', '4 Sect', '5 Sect', '6 Sect'],
+        tableRows: [
+          ['06:00 – 13:29', '13:00', '12:30', '12:00', '11:30', '11:00'],
+          ['13:30 – 14:59', '12:45–12:15', '12:15–11:45', '11:45–11:15', '11:15–10:45', '10:45–10:15'],
+          ['15:00 – 16:59', '12:00–11:15', '11:30–10:45', '11:00–10:15', '10:30–09:45', '10:00–09:15'],
+          ['17:00 – 04:59', '11:00', '10:30', '10:00', '09:30', '09:00'],
+          ['05:00 – 05:59', '12:00–12:45', '11:30–12:15', '11:00–11:45', '10:30–11:15', '10:00–10:45']
+        ],
+        diffNote: 'Implements the full TCAR ORO.FTL.205(b)(1) acclimatised FDP matrix.',
+        tags: ['Table 7.3', '13:00h Peak', '11:00h Night', '−30m per Sector']
+      },
+      {
+        id: 'basic_fdp_x',
+        label: 'Basic FDP: State X (Tables 7.4/7.5)',
+        badge: 'State X: 11:00h (12:00h w/ FRM) • Max 8 Sect',
+        section: '§7.2.3.1 (Tables 7.4/7.5)',
+        page: '7-12',
+        layer: 'fdp',
+        trUpdated: true,
+        slot: 1,
+        keyMetric: 'State X: 11:00h (1–2 sect) down to 09:00h (6–8 sect) | Under FRM (Table 7.5): 12:00h (1–2 sect)',
+        personas: {
+          overview: 'When crew are in an Unknown State of Acclimatisation (State X), clock start time no longer matters—FDP is strictly capped by sector count.',
+          crew: 'On a long-haul layover after 48 hours (before 72/96/120h), you are in State X: your Basic Max FDP is 11:00h for 1–2 sectors (or 12:00h under FRM Table 7.5), regardless of departure hour.',
+          dispatcher: 'State X crews cannot use Method 1 Planned Extension (Table 7.6 requires acclimatisation). Use Method 2 (In-Flight Rest) for long-haul return legs.',
+          safety: 'Table 7.5 (12:00h for 1–2 sectors in State X) requires continuous FRM monitoring under §7.3.'
+        },
+        bullets: [
+          'Table 7.4 (Standard State X): 1–2 sectors = 11:00h; 3 sectors = 10:30h; 4 sectors = 10:00h; 5 sectors = 09:30h; 6–8 sectors = 09:00h.',
+          'Table 7.5 (State X under FRM): 1–2 sectors = 12:00h; 3 sectors = 11:30h; 4 sectors = 11:00h; 5 sectors = 10:30h; 6–8 sectors = 09:00h.',
+          'Time-of-day independent: Because circadian phase is unknown in State X, start time of day is not used.'
+        ],
+        tableTitle: 'Tables 7.4 & 7.5 — Max Daily FDP in Unknown State X',
+        tableHeaders: ['Regime', '1–2 Sect', '3 Sect', '4 Sect', '5 Sect', '6–8 Sect'],
+        tableRows: [
+          ['Table 7.4 (Standard X)', '11:00', '10:30', '10:00', '09:30', '09:00'],
+          ['Table 7.5 (State X + FRM)', '12:00', '11:30', '11:00', '10:30', '09:00']
+        ],
+        diffNote: 'New TCAR ORO.FTL State X tables replacing legacy trans-meridian rules.',
+        tags: ['Table 7.4', 'Table 7.5 (FRM)', 'State X (Unknown)']
+      },
+      {
+        id: 'cabin_fdp_diff',
+        label: 'Cabin Crew FDP & Nutrition',
+        badge: 'Cabin +15m/+1h Diff • Meal if FDP > 5h',
+        section: '§7.2.3.2 / §7.2.12',
+        page: '7-13, 7-28',
+        layer: 'fdp',
+        trUpdated: true,
+        slot: 2,
+        keyMetric: 'Cabin Crew FDP Extended by Reporting Diff (Max +1:00h) | Meal Required if FDP > 5:00h',
+        personas: {
+          overview: 'Extends Cabin Crew Max FDP by their earlier reporting time difference (up to 1 hour) and guarantees crew meals on FDPs over 5 hours.',
+          crew: 'At BKK you report at STD − 2:00h while Pilots report at STD − 1:45h. Your Max Daily FDP is extended by that 15m difference (up to +1:00h max). Also, any FDP >5:00h requires regular meals (max 6h apart, ≥1 hot meal in 12h).',
+          dispatcher: 'Ensures Cabin Crew and Flight Crew reach block-in legal limits together despite staggered BKK briefing times.',
+          safety: 'Cabin Crew extension capped at +1:00h max under ORO.FTL.205(c); nutrition governed by §7.2.12 and OM-A 6.1.9.4.'
+        },
+        bullets: [
+          'Cabin Crew Reporting Extension (§7.2.3.2): Max daily FDP for Cabin Crew may be extended by the difference between Cabin and Flight Crew reporting times, up to a maximum of +1:00 hour.',
+          'Lookup Anchor: Base FDP is still looked up in Table 7.3/7.4 using the Cabin Crew’s own reporting time.',
+          'Nutrition Rules (§7.2.12): Regular meals required when FDP > 5:00h, with max 6:00h between meals and at least 1 hot meal within 12:00h (OM-A 6.1.9.4).'
+        ],
+        diffNote: 'Added under TCAR ORO.FTL.205(c) to harmonize Flight and Cabin Crew FDP termination times.',
+        tags: ['Cabin Crew +15m/+1h', 'Nutrition FDP > 5h', '§7.2.3.2']
+      },
+
+      // GROUP 4: FDP EXTENSIONS & UNFORESEEN OPS
+      {
+        id: 'ext_method1',
+        label: 'Method 1: Planned (+1h, No Bunk)',
+        badge: 'Up to +1h (Max 2×/7d) • +4h Rest Comp.',
+        section: '§7.2.4.1 (Table 7.6)',
+        page: '7-13 to 7-14',
+        layer: 'extension',
+        trUpdated: true,
+        slot: 0,
+        keyMetric: 'Up to +1:00h (Max 2× in 7d) | Pre +2h & Post +2h Rest (or Post +4h) | WOCL Sector Caps: 5 / 4 / 2',
+        personas: {
+          overview: 'Pre-planned roster extension of up to +1 hour without extra crew or bunks, compensated by +4 hours of extra rest.',
+          crew: 'Must be planned in advance on your roster (max twice in 7 days). If WOCL is not encroached, max 5 sectors; ≤2h WOCL = max 4 sectors; >2h WOCL = max 2 sectors. Gives you +4h post-flight rest (or +2h pre & +2h post).',
+          dispatcher: 'Check Table 7.6 (06:15–19:00 windows allow up to 14:00h for 1–2 sectors; 19:00–05:59 is "Not allowed"). Cannot combine with Split Duty or In-Flight Rest.',
+          safety: 'OP-1 logs all Method 1 extensions monthly for Flight Safety & DP-A; DO-SAG reviews quarterly (§7.2.4.4).'
+        },
+        bullets: [
+          'Extension Limit: Up to +1:00 hour above Table 7.3 Basic FDP (exact limits in Table 7.6, reaching 14:00h max for 06:15–13:29 on 1–2 sectors). Not allowed for 19:00–05:59 starts.',
+          'Frequency Cap: Limited to at most 2 times in any 7 consecutive days.',
+          'WOCL Sector Caps: Max 5 sectors (no WOCL encroachment); Max 4 sectors (WOCL encroached ≤2:00h); Max 2 sectors (WOCL encroached >2:00h).',
+          'Rest Compensation: Pre-flight AND post-flight minimum rest increased by +2:00h each, OR post-flight rest alone increased by +4:00h.'
+        ],
+        tableTitle: 'Table 7.6 — Max Daily FDP with Planned Extension (Method 1)',
+        tableHeaders: ['Start Time', '1–2 Sect', '3 Sect', '4 Sect', '5 Sect'],
+        tableRows: [
+          ['06:00 – 06:14', 'Not allowed', '12:45', '12:15', '11:45'],
+          ['06:15 – 13:29', '14:00', '13:30', '13:00', '12:30'],
+          ['13:30 – 14:59', '13:45–13:15', '13:15–12:45', '12:45–12:15', '12:15–11:45'],
+          ['15:00 – 16:29', '13:00–12:30', '12:30–12:00', '12:00–11:30', '11:30–11:00'],
+          ['16:30 – 18:59', '12:15–12:00', '11:45–11:00', '11:15–10:30', 'Not allowed'],
+          ['19:00 – 05:59', 'Not allowed', 'Not allowed', 'Not allowed', 'Not allowed']
+        ],
+        diffNote: 'Adopts TCAR ORO.FTL.205(d) Table 7.6 with strict WOCL sector caps and +4h rest compensation.',
+        tags: ['Method 1 Extension', 'Table 7.6', 'Max 2× in 7d', '+4h Rest Compensation']
+      },
+      {
+        id: 'ext_method2',
+        label: 'Method 2: In-Flight Rest (Augmented)',
+        badge: '+1P: 14–16h • +2P: 15–18h • Table 7.7 Cabin Rest',
+        section: '§7.2.4.2 (Table 7.7)',
+        page: '7-14 to 7-17',
+        layer: 'extension',
+        trUpdated: true,
+        slot: 1,
+        keyMetric: '+1 Pilot: 14h/15h/16h (Cl.3/2/1) | +2 Pilots: 15h/16h/17h (+1h if >9h leg) | Cabin: Table 7.7 (1:30h–5:35h)',
+        personas: {
+          overview: 'Extends long-haul FDP up to 16–18 hours by augmenting the flight crew and providing onboard rest bunks/seats (Class 1, 2, or 3).',
+          crew: 'Max 3 sectors. Every crew member needs ≥90m consecutive in-flight rest (2 consecutive hours for pilots at controls during landing). Cabin Crew min rest depends on actual FDP (Report → ETA) in Table 7.7. Destination rest must be ≥ preceding DP or 14:00h!',
+          dispatcher: 'Calculate actual FDP from STD − Reporting Time to Final ETA. If 1 leg block time (ETA − STD) >9:00h and total legs ≤2, Flight Crew Max FDP increases by +1:00h!',
+          safety: 'All time spent in the onboard rest facility counts 100% as FDP and DP. Cannot combine with Split Duty or Method 1.'
+        },
+        bullets: [
+          'Flight Crew Max FDP (+1 Augmented Pilot): Class 3 = 14:00h; Class 2 = 15:00h; Class 1 = 16:00h.',
+          'Flight Crew Max FDP (+2 Augmented Pilots): Class 3 = 15:00h; Class 2 = 16:00h; Class 1 = 17:00h.',
+          'Ultra-Long-Haul +1:00h Bonus: Limits above increase by +1:00h (up to 17:00h for +1P or 18:00h for +2P in Class 1) if at least 1 sector exceeds 9:00h continuous flight time (ETA − STD > 9:00h) and max 2 operating sectors.',
+          'Flight Crew Min In-Flight Rest: ≥ 1:30h consecutive for relief crew; ≥ 2:00h consecutive for flight crew at controls during landing.',
+          'Cabin Crew Min In-Flight Rest (Table 7.7): Scales from 1:30h (FDP ≤14:30h) up to 4:30h (Class 1) / 5:35h (Class 2) based on actual extended FDP (Report → ETA). Destination rest ≥ preceding DP or 14:00h.'
+        ],
+        tableTitle: 'Table 7.7 — Cabin Crew Minimum In-Flight Rest by Extended FDP (Report → ETA)',
+        tableHeaders: ['Extended FDP', 'Class 1 Bunk', 'Class 2 Seat', 'Class 3 Seat'],
+        tableRows: [
+          ['Up to 14:30 hrs', '1:30', '1:30', '1:30'],
+          ['14:31 – 15:00 hrs', '1:45', '2:00', '2:20'],
+          ['15:01 – 15:30 hrs', '2:00', '2:20', '2:40'],
+          ['15:31 – 16:00 hrs', '2:15', '2:40', '3:00'],
+          ['16:01 – 16:30 hrs', '2:35', '3:00', '3:20'],
+          ['16:31 – 17:00 hrs', '3:00', '3:25', '3:40'],
+          ['17:01 – 17:30 hrs', '3:25', '4:10', 'Not Allowed'],
+          ['17:31 – 18:00 hrs', '3:50', '4:50', 'Not Allowed'],
+          ['18:01 – 18:30 hrs*', '4:30', '5:35', 'Not Allowed']
+        ],
+        diffNote: 'Replaces legacy augmented limits with Class 1/2/3 facility matrix and Table 7.7 Cabin Crew sliding scale.',
+        tags: ['Method 2 Augmented', '14h–18h Max FDP', 'Table 7.7 Cabin Rest', '14h Destination Rest']
+      },
+      {
+        id: 'ext_method3',
+        label: 'Method 3: Split Duty on Ground',
+        badge: 'Min 3:00h Break → +50% Break to Basic FDP',
+        section: '§7.2.4.3',
+        page: '7-17 to 7-18',
+        layer: 'extension',
+        trUpdated: true,
+        slot: 2,
+        keyMetric: 'Min 3:00h Ground Break → Extends Basic FDP by up to +50% of Break | Break = 100% FDP',
+        personas: {
+          overview: 'A scheduled ground break of at least 3 hours between flights that extends your Basic FDP by half the break duration.',
+          crew: 'The ground break counts 100% as FDP! It must be ≥3:00h AFTER subtracting pre/post-flight duties and travel (120m WB / 90m SA at BKK; 90m WB / 60m SA at outstations). If ≥6h or touching WOCL, THAI must provide a hotel bedroom (Suitable Accommodation).',
+          dispatcher: 'Any portion of a ground break >6h or touching WOCL without Suitable Accommodation cannot count toward the 50% FDP extension. Cannot follow reduced rest or combine with Method 2.',
+          safety: 'Audit ground break net calculation to ensure transit/briefing buffers (120m/90m/60m) are excluded before taking the 50% credit.'
+        },
+        bullets: [
+          'Minimum Break Duration: At least 3:00 consecutive hours on the ground, excluding pre/post-flight duty and local travel.',
+          'Standard Pre/Post & Travel Deduction: At BKK = 120m (wide-body) or 90m (single-aisle) total; At Outstations = 90m (wide-body) or 60m (single-aisle) total (if actual travel >15m each way, add excess).',
+          'Extension Formula: Basic Max FDP (Table 7.3) may be increased by up to 50% of the net break duration. The break itself counts in full (100%) as FDP.',
+          'Accommodation Rule: Accommodation provided for ≥3h break; Suitable Accommodation (individual bedroom) required if break ≥6:00h or encroaches WOCL.'
+        ],
+        diffNote: 'Specifies exact wide-body vs. single-aisle deduction buffers (120m/90m at BKK; 90m/60m at outstations).',
+        tags: ['Method 3 Split Duty', '+50% Break Credit', '3:00h Min Break']
+      },
+      {
+        id: 'pic_discretion',
+        label: 'PIC Discretion & Delayed Report',
+        badge: 'PIC +2h/+3h (CAAT 28d) • Delay <4h / ≥4h / ≥10h',
+        section: '§7.2.6.1 / §7.2.6.2',
+        page: '7-19 to 7-21',
+        layer: 'extension',
+        trUpdated: true,
+        slot: 3,
+        keyMetric: 'PIC: Max +2h (Unaug) / +3h (Aug), Rest ≥10h | Delay: <4h Orig FDP, ≥4h Stricter, ≥10h = Rest',
+        personas: {
+          overview: 'Covers operational delays before reporting (Delayed Reporting §7.2.6.2) and unforeseen delays at/after reporting (PIC Discretion §7.2.6.1).',
+          crew: 'Before reporting: if delayed <4h, use original Max FDP from delayed start; ≥4h uses stricter of original/delayed FDP; ≥10h undisturbed = Rest Period! At/after reporting: PIC Discretion allows +2h (unaug) or +3h (aug)—if on Method 1, add +2h to BASIC Table 7.3, never stack!',
+          dispatcher: 'Delayed reporting requires ≥90m lead time at BKK (1:15h at Line Stations); on 2nd delay notice, FDP starts 1h after 2nd notice. PIC Discretion >1h requires CAAT report within 28 days.',
+          safety: 'OP-1 logs all extensions monthly for DO-SAG quarterly review (§7.2.4.4); extensions/rest reductions >1:00h go to CAAT within 28 days.'
+        },
+        bullets: [
+          'PIC’s Discretion (§7.2.6.1 — At/After Reporting): Max +2:00h (unaugmented) or +3:00h (augmented). If planned with Method 1, calculate +2:00h from Basic Table 7.3 (non-stacking!). Post-flight rest never < 10:00h.',
+          'Mandatory CAAT Reporting: Submit OR report; if FDP extension or rest reduction exceeds 1:00h, THAI reports to CAAT within 28 days.',
+          'Delayed Reporting (§7.2.6.2 — Before Leaving Accommodation): Single delay <4:00h = original Max FDP from delayed time; Delay ≥4:00h = more limiting Max FDP from delayed time; Multiple notices = FDP starts 1:00h after 2nd notice.',
+          '10-Hour Delay & Lead Times: Delay ≥10:00h undisturbed counts as a Rest Period. Required notice lead time: ≥90m at BKK, ≥1:15h at Line Stations.'
+        ],
+        diffNote: 'Enforces Method 1 non-stacking with PIC Discretion, 28-day CAAT reporting (>1h), and <4h / ≥4h / ≥10h delayed reporting bands.',
+        tags: ['PIC Discretion (+2h/+3h)', 'CAAT 28-Day Report', 'Delayed Reporting (<4h/≥4h)']
+      },
+
+      // GROUP 5: STANDBY, RESERVE & REST RECOVERY
+      {
+        id: 'standby_rules',
+        label: 'Standby (Airport vs Home) & Reserve',
+        badge: 'Airport 8h (>4h cuts FDP) • Home 16h (>6h cuts)',
+        section: '§7.2.9 / §7.2.10',
+        page: '7-22 to 7-25',
+        layer: 'rest',
+        trUpdated: true,
+        slot: 0,
+        keyMetric: 'Airport SBY: Max 8h (100% DP, >4h cuts FDP) | Home SBY: Max 16h (25% DP, >6h cuts, 23–07h excl.)',
+        personas: {
+          overview: 'Compares Airport Standby (100% DP), Home/Hotel Standby (25% DP), and Reserve (0% DP, ≥10h notice).',
+          crew: 'Airport SBY (max 8h): >4h reduces Max FDP, and Airport SBY + FDP ≤ 16h. Home/Hotel SBY (max 16h): >6h (>8h if aug/split) reduces Basic FDP, EXCEPT 23:00–07:00 is excluded until OP-1 calls! Reserve (max 8h/day, max 5 days): 0% DP, gives ≥10h notice.',
+          dispatcher: 'Latest call on Home Standby for next-day early duty is 23:59 local. Crew with "No Duty Assigned" at BKK require ≥12:00h lead time (§7.2.11.5).',
+          safety: 'Designed to cap total awake time (Home Standby + FDP) at 18:00 hours (Tables 7.8 & 7.9).'
+        },
+        bullets: [
+          'Airport Standby (§7.2.9.1): Max 8:00h (counts 100% as DP; accommodation provided). Standby >4:00h reduces subsequent Max FDP. Max combined Airport Standby + Basic FDP = 16:00h.',
+          'Home / Hotel Standby (§7.2.9.2): Max 16:00h (counts 25% as DP; max 18:00h awake). Standby >6:00h (>8:00h if augmented/split) reduces Basic FDP (Tables 7.8/7.9), excluding 23:00–07:00 until contacted by OP-1.',
+          'Reserve (§7.2.10): Max 8:00h/day, max 5 consecutive days between RERRPs (0% DP/rest). Routine notice ≥24h, or min 10:00h notice via 2-way comm (up to 8h uncontacted).',
+          'Unassigned Crew at BKK (§7.2.11.5): Requires minimum 12:00h lead time before reporting.'
+        ],
+        diffNote: 'Introduces ORO.FTL Standby FDP reduction thresholds (>4h Airport / >6h Home), 25% DP credit, and 23:00–07:00 overnight exclusion.',
+        tags: ['Airport SBY (8h / 100% DP)', 'Home SBY (16h / 25% DP)', 'Reserve (5d / 10h Notice)']
+      },
+      {
+        id: 'min_rest_daily',
+        label: 'Daily Minimum Rest (BKK vs Away)',
+        badge: 'BKK: ≥DP or 12:00h • Away: ≥DP or 10:00h',
+        section: '§7.2.11 (1)–(2)',
+        page: '7-25 to 7-26',
+        layer: 'rest',
+        trUpdated: true,
+        slot: 1,
+        keyMetric: 'Home Base (BKK): ≥ DP or 12:00h | Away from Base: ≥ DP or 10:00h (Incl. 8h Sleep + 1h Phys.)',
+        personas: {
+          overview: 'Sets the minimum rest required before any FDP starts at Home Base (12h) vs. outstation hotels (10h).',
+          crew: 'At BKK, rest must be ≥ preceding DP or 12:00h. At an outstation hotel, rest must be ≥ preceding DP or 10:00h (allowing 8:00h sleep + 1:00h meals/shower). If hotel transfer exceeds 30m each way, minimum rest increases by 2× the excess!',
+          dispatcher: 'Check hotel transfer times at outstations: a 45-minute hotel ride (15m over the 30m baseline) adds 2 × 15m = +30m to the 10:00h minimum rest.',
+          safety: 'Reduced Rest under FRMS (§7.2.11.4) is currently NOT applied at THAI; only PIC Discretion (§7.2.6.1) can reduce rest to the 10:00h absolute floor.'
+        },
+        bullets: [
+          'At Home Base (BKK): Minimum rest period must be at least as long as the preceding Duty Period or 12:00 hours, whichever is greater.',
+          'Away from Home Base (Outstation): Minimum rest period must be at least as long as the preceding Duty Period or 10:00 hours, whichever is greater (or ≥ DP / 14:00h after Method 2 or TZ ≥4h).',
+          '8h Sleep Opportunity & Travel Rule: Outstation rest must provide 8:00h sleep + 1:00h physiological needs + travel. If one-way hotel travel >30m, increase min rest by 2× excess.'
+        ],
+        diffNote: 'Enforces the >30m hotel transfer 2× rest multiplier and states that FRMS Reduced Rest is not yet active.',
+        tags: ['BKK Rest ≥12h', 'Away Rest ≥10h', 'Hotel Travel >30m Rule']
+      },
+      {
+        id: 'rerrp_tz_recovery',
+        label: 'RERRP & Time Zone Recovery Rest',
+        badge: 'RERRP 36h (60h Disr.) • TZ ≥4h: 2–5 Local Nights',
+        section: '§7.2.11 (3) & Table 7.10',
+        page: '7-26 to 7-27',
+        layer: 'rest',
+        trUpdated: true,
+        slot: 2,
+        keyMetric: 'RERRP: Min 36h w/ 2 LN (Max 168h Apart; 60h if ≥4 Disruptive) | TZ ≥4h: 14h Away & 2–5 LN at BKK',
+        personas: {
+          overview: 'Covers weekly extended recovery rest (36h RERRP every 7 days) and post-long-haul Time Zone recovery local nights (Table 7.10).',
+          crew: 'Weekly RERRP is ≥36:00h (with 2 local nights) every ≤168h (increased to 2 local days twice/month, or 60:00h if ≥4 disruptive duties). After crossing ≥4 time zones, away rest is ≥14:00h and BKK recovery is 2 to 5 Local Nights per Table 7.10 (min 3 LN for E-W/W-E)!',
+          dispatcher: 'Look up elapsed rotation time vs. max TZ difference in Table 7.10 before rostering next duty at BKK.',
+          safety: 'Monitor East-West / West-East alternating rotations for the mandatory 3 Local Nights recovery.'
+        },
+        bullets: [
+          'Standard RERRP: Minimum 36:00 consecutive hours including 2 local nights, with max 168:00h (7 days) between RERRPs. Increased to 2 local days twice every month.',
+          'Disruptive Schedule Extension (§7.2.11.2): ≥4 disruptive duties between two RERRPs extends the second RERRP to 60:00 hours.',
+          'Time Zone Difference ≥ 4:00h (§7.2.11.3): Away rest ≥ preceding DP or 14:00h; Home Base (BKK) recovery requires 2 to 5 Local Nights per Table 7.10 (min 3 LN for alternating East–West / West–East).'
+        ],
+        tableTitle: 'Table 7.10 — Minimum Local Nights of Recovery Rest at Home Base (BKK)',
+        tableHeaders: ['Max TZ Diff', '≤ 48h Elapsed', '>48 to 72h', '>72 to 96h', '> 96h Elapsed'],
+        tableRows: [
+          ['4:00 to 6:00h', '2 Local Nights', '2 Local Nights', '3 Local Nights', '3 Local Nights'],
+          ['6:01 to 9:00h', '2 Local Nights', '3 Local Nights', '3 Local Nights', '4 Local Nights'],
+          ['9:01 to 12:00h', '2 Local Nights', '3 Local Nights', '4 Local Nights', '5 Local Nights']
+        ],
+        diffNote: 'Introduces TCAR ORO.FTL Table 7.10 (2–5 Local Nights) and the 36h/168h/60h RERRP rules.',
+        tags: ['RERRP (36h / 60h)', 'Table 7.10 (2–5 LN)', '14h Away Rest']
+      },
+
+      // GROUP 6: FRMS & PSWM FATIGUE
+      {
+        id: 'frms_samn',
+        label: 'FRMS, FSAG & Samn-Perelli Scale',
+        badge: 'FSAG Monthly • Samn-Perelli 1–7 • SafetyManager365',
+        section: '§7.2.15 / §7.3.1–7.3.12',
+        page: '7-29 to 7-48',
+        layer: 'frms',
+        trUpdated: true,
+        slot: 0,
+        keyMetric: '4 FRMS Pillars | FSAG Meets Monthly | Samn-Perelli 1–7 Alertness Scale | SafetyManager365 Report',
+        personas: {
+          overview: 'THAI’s data-driven Fatigue Risk Management System (FRMS), 1–7 Samn-Perelli alertness scale, and non-punitive reporting.',
+          crew: 'Rate your alertness from 1 ("Fully alert") to 7 ("Completely exhausted, unable to function"). If unfit due to fatigue, notify THAI and file a non-punitive "Fatigue Report" via SafetyManager365.',
+          dispatcher: 'OP-1 monthly extension logs and roster metrics feed into FSAG predictive, proactive, and reactive hazard identification.',
+          safety: 'FSAG meets monthly (12×/year). Combine Samn-Perelli (Table 7.13) with Fatigue Factor matrices (Tables 7.14–7.18). DP-A retains FTL records for 24 months.'
+        },
+        bullets: [
+          '4 FRMS Pillars (§7.3.1): Policy & Documentation, FRM Processes (Predictive/Proactive/Reactive), Safety Assurance, and Promotion. Overseen monthly by FSAG.',
+          'Samn-Perelli 7-Point Fatigue Scale (Table 7.13): 1 = Fully alert; 2 = Very lively; 3 = Okay; 4 = A little tired; 5 = Moderately tired; 6 = Extremely tired; 7 = Completely exhausted (unable to work).',
+          'Non-Punitive Fatigue Reporting (§7.2.15): Submitted via SafetyManager365 ("Fatigue Report"). FTL & rest records kept 24 months by DP-A (§7.2.13).'
+        ],
+        diffNote: 'Integrates SafetyManager365 reporting with Tables 7.13–7.18 risk assessment matrices.',
+        tags: ['FRMS 4 Pillars', 'Samn-Perelli (1–7)', 'SafetyManager365', '24-Month Records']
+      },
+      {
+        id: 'pswm_model',
+        label: 'Prior Sleep Wake Model (PSWM)',
+        badge: '24h Sleep + 48h Sleep + Awake Hrs → Risk Score',
+        section: '§7.3.13.2',
+        page: '7-49 to 7-52',
+        layer: 'frms',
+        trUpdated: true,
+        slot: 1,
+        keyMetric: 'Step 1 (24h Sleep) + Step 2 (48h Sleep) + Step 3 (Awake > 48h Sleep) → 0 Low | 1–4 Minor | 5–8 Mod | ≥9 High',
+        personas: {
+          overview: 'A fast 3-step pre-flight self-check formula that calculates your personal fatigue score from your last 24h and 48h of sleep.',
+          crew: 'Before reporting (especially on night or extended duties), add your 3 steps: (1) Prior 24h sleep points (2h=12, 3h=8, 4h=4, ≥5h=0), (2) Prior 48h sleep points (8h=8, 9h=6, 10h=4, 11h=2, ≥12h=0), and (3) +1 point for every hour awake exceeding your 48h sleep total. Score ≥9 = Significant Risk!',
+          dispatcher: 'Part of Appropriate FRM (§7.3.13) used when operating Night Duties or State X FRM schedules.',
+          safety: 'Provides an objective threshold (0 Acceptable, 1–4 Minor, 5–8 Moderate, ≥9 Significant) for crew self-assessment and mitigation.'
+        },
+        bullets: [
+          'Step 1 — Sleep in Prior 24 Hours: ≤2h = 12 pts; 3h = 8 pts; 4h = 4 pts; ≥5h = 0 pts.',
+          'Step 2 — Sleep in Prior 48 Hours: ≤8h = 8 pts; 9h = 6 pts; 10h = 4 pts; 11h = 2 pts; ≥12h = 0 pts.',
+          'Step 3 — Time Awake vs. 48h Sleep: If total hours awake in the 48h window exceed total hours of sleep in the 48h window, add +1 pt per excess hour.',
+          'Total PSWM Score Action Thresholds: 0 = Acceptable; 1–4 = Minor fatigue (self-monitor); 5–8 = Moderate fatigue (brief crew, nap/caffeine); ≥9 = Significant fatigue risk (assess fitness / report).'
+        ],
+        tableTitle: 'PSWM 3-Step Scoring & Risk Action Matrix (§7.3.13.2)',
+        tableHeaders: ['PSWM Total Score', 'Fatigue Level', 'Required Operational Action'],
+        tableRows: [
+          ['0 Points', 'Acceptable', 'Normal operations — no elevated fatigue risk'],
+          ['1 – 4 Points', 'Minor Fatigue', 'Self-monitor alertness; apply personal countermeasures'],
+          ['5 – 8 Points', 'Moderate Fatigue', 'Brief crew; use controlled napping / strategic caffeine'],
+          ['≥ 9 Points', 'Significant Risk', 'High fatigue — assess fitness to fly & file Fatigue Report']
+        ],
+        diffNote: 'New quantitative self-assessment tool added in §7.3.13.2 under Appropriate FRM.',
+        tags: ['PSWM 3-Step Formula', '24h / 48h Sleep', 'Score ≥9 High Risk']
+      }
+    ];
+
+    const GRAPH_EDGES = [
+      { from: 'wocl_night', to: 'reporting_times', label: '00–04h no-call' },
+      { from: 'wocl_night', to: 'basic_fdp_b_d', label: '11:00h night cap' },
+      { from: 'wocl_night', to: 'ext_method1', label: 'caps sectors 5/4/2' },
+      { from: 'wocl_night', to: 'ext_method3', label: 'WOCL needs room' },
+      { from: 'wocl_night', to: 'pswm_model', label: 'Appropriate FRM' },
+
+      { from: 'disruptive_sched', to: 'rerrp_tz_recovery', label: '≥4 → 60h RERRP' },
+      { from: 'acclim_table', to: 'basic_fdp_b_d', label: 'State B or D' },
+      { from: 'acclim_table', to: 'basic_fdp_x', label: 'State X' },
+      { from: 'acclim_table', to: 'rerrp_tz_recovery', label: 'TZ ≥4h (Table 7.10)' },
+
+      { from: 'accomm_defs', to: 'ext_method2', label: 'Class 1/2/3 bunk' },
+      { from: 'accomm_defs', to: 'ext_method3', label: 'Suitable accomm.' },
+      { from: 'accomm_defs', to: 'standby_rules', label: 'Airport SBY room' },
+
+      { from: 'reporting_times', to: 'basic_fdp_b_d', label: 'starts FDP clock' },
+      { from: 'reporting_times', to: 'cabin_fdp_diff', label: '15m BKK diff' },
+      { from: 'reporting_times', to: 'pic_discretion', label: '90m / 1:15h lead' },
+
+      { from: 'positioning_rules', to: 'basic_fdp_b_d', label: 'pre-op = FDP' },
+      { from: 'positioning_rules', to: 'cumulative_caps', label: '100% DP' },
+      { from: 'positioning_rules', to: 'min_rest_daily', label: 'increases DP' },
+
+      { from: 'basic_fdp_b_d', to: 'ext_method1', label: '+1:00h (Table 7.6)' },
+      { from: 'basic_fdp_b_d', to: 'ext_method2', label: 'augmented FDP' },
+      { from: 'basic_fdp_b_d', to: 'ext_method3', label: '+50% break' },
+      { from: 'basic_fdp_b_d', to: 'pic_discretion', label: '+2h/+3h base' },
+
+      { from: 'basic_fdp_x', to: 'ext_method2', label: 'long-haul return' },
+      { from: 'basic_fdp_x', to: 'frms_samn', label: 'Table 7.5 FRM' },
+
+      { from: 'ext_method1', to: 'min_rest_daily', label: '+4h rest comp.' },
+      { from: 'ext_method2', to: 'min_rest_daily', label: 'dest rest ≥14h' },
+      { from: 'pic_discretion', to: 'min_rest_daily', label: 'rest ≥10:00h' },
+      { from: 'pic_discretion', to: 'frms_samn', label: '>1h → CAAT 28d' },
+
+      { from: 'standby_rules', to: 'basic_fdp_b_d', label: '>4h / >6h cuts FDP' },
+      { from: 'standby_rules', to: 'cumulative_caps', label: '100% / 25% DP' },
+      { from: 'min_rest_daily', to: 'rerrp_tz_recovery', label: 'weekly 36h RERRP' },
+      { from: 'frms_samn', to: 'pswm_model', label: '3-step self-check' }
+    ];
+
+    const GUIDED_TOURS = {
+      tour_fdp: {
+        title: 'Tour 1: Daily Max FDP Mastery (6 Steps)',
+        steps: [
+          { nodeId: 'acclim_table', text: 'Step 1: Start with Table 7.1! Check your Time Zone difference (<4h vs ≥4h) and elapsed time to find if you are in State B, State X, or State D.' },
+          { nodeId: 'reporting_times', text: 'Step 2: Check when your FDP clock starts (Table 7.2): 1:45h (Flight) or 2:00h (Cabin) before STD at BKK, and 1:15h at Line Stations.' },
+          { nodeId: 'basic_fdp_b_d', text: 'Step 3: If Acclimatised (State B or D), use Table 7.3: Peak (06:00–13:29) = 13:00h for 1–2 sectors; Night (17:00–04:59) = 11:00h. Subtract 30m per extra sector.' },
+          { nodeId: 'basic_fdp_x', text: 'Step 4: If in Unknown State X (48h+ into a long-haul layover), ignore clock start time and use Table 7.4 (11:00h for 1–2 sectors) or Table 7.5 (12:00h under FRM).' },
+          { nodeId: 'cabin_fdp_diff', text: 'Step 5: Cabin Crew reporting 15m earlier at BKK extend their Max Daily FDP by that 15m difference (up to +1:00h max).' },
+          { nodeId: 'ext_method2', text: 'Step 6: Need more FDP? Use Method 1 (+1h planned), Method 2 (In-Flight Rest: 14h–18h with bunks/seats + Table 7.7), or Method 3 (Split Duty: +50% of ≥3h ground break).' }
+        ]
+      },
+      tour_ops: {
+        title: 'Tour 2: Delays, Split Duty & PIC Discretion (4 Steps)',
+        steps: [
+          { nodeId: 'reporting_times', text: 'Step 1: During the 00:00–04:00 local sleep protection window, OP-1 will not phone crew for routine roster changes.' },
+          { nodeId: 'ext_method3', text: 'Step 2: Have a scheduled ground break ≥3:00h (excl. 120m/90m/60m briefing & travel)? Method 3 Split Duty adds up to +50% of the break to Basic FDP.' },
+          { nodeId: 'pic_discretion', text: 'Step 3: Delayed before leaving hotel? <4h = original FDP; ≥4h = stricter FDP; ≥10h = Rest! Delayed at/after report? PIC Discretion allows +2h (unaug) or +3h (aug) from Basic FDP.' },
+          { nodeId: 'frms_samn', text: 'Step 4: Any PIC Discretion extension or rest reduction >1:00h must be reported to CAAT within 28 days, and OP-1 logs all extensions monthly.' }
+        ]
+      },
+      tour_rest: {
+        title: 'Tour 3: Standby, Reserve & Rest Recovery (4 Steps)',
+        steps: [
+          { nodeId: 'standby_rules', text: 'Step 1: Airport Standby (max 8h, 100% DP) cuts FDP after >4h. Home Standby (max 16h, 25% DP) cuts FDP after >6h (excluding 23:00–07:00 until called). Reserve gives ≥10h notice.' },
+          { nodeId: 'min_rest_daily', text: 'Step 2: Daily Minimum Rest: ≥ preceding DP or 12:00h at BKK; ≥ preceding DP or 10:00h away from base (must allow 8h sleep + 1h physiological; hotel ride >30m adds 2× excess).' },
+          { nodeId: 'disruptive_sched', text: 'Step 3: Transitioning from Late Finish/Night to Early Start at BKK requires 1 Local Night. Working ≥4 disruptive duties between RERRPs extends the 2nd RERRP to 60:00h!' },
+          { nodeId: 'rerrp_tz_recovery', text: 'Step 4: Weekly RERRP is ≥36:00h (2 LN) every ≤168h. Crossing ≥4 time zones requires ≥14:00h away rest and 2 to 5 Local Nights at BKK per Table 7.10.' }
+        ]
+      },
+      tour_frms: {
+        title: 'Tour 4: FRMS & PSWM Fatigue Self-Check (3 Steps)',
+        steps: [
+          { nodeId: 'wocl_night', text: 'Step 1: Consecutive Night Duties (02:00–04:59) are capped at 4 sectors and require Appropriate FRM alertness management.' },
+          { nodeId: 'pswm_model', text: 'Step 2: Run the 3-step Prior Sleep Wake Model (PSWM): score your 24h sleep + 48h sleep + awake hours > 48h sleep. Score 0 = Acceptable, 1–4 = Minor, 5–8 = Moderate, ≥9 = Significant Risk.' },
+          { nodeId: 'frms_samn', text: 'Step 3: Rate alertness on the 1–7 Samn-Perelli scale and file non-punitive Fatigue Reports via SafetyManager365 whenever fatigue affects safety.' }
+        ]
+      }
+    };
+
+    const DOMAIN_FLOWS = [
+      {
+        title: 'Flow 1: Pre-Flight Acclimatisation & Daily Max FDP Lookup',
+        subtitle: 'How to determine your legal daily FDP ceiling in 3 steps',
+        color: 'border-purple-500/40 bg-purple-950/15',
+        steps: [
+          { nodeId: 'acclim_table', step: '1. Check State (Table 7.1)', detail: 'TZ <4h or <48h elapsed = State B; 48–119h = State X; ≥72/96/120h = State D.' },
+          { nodeId: 'reporting_times', step: '2. Reporting Clock', detail: 'BKK: 1:45h (Flight) / 2:00h (Cabin). Outstation or Positioning: 1:15h prior to STD.' },
+          { nodeId: 'basic_fdp_b_d', step: '3A. State B/D (Table 7.3)', detail: 'Peak (06:00–13:29) = 13:00h; Night (17:00–04:59) = 11:00h; minus 30m/sector >2.' },
+          { nodeId: 'basic_fdp_x', step: '3B. State X (Table 7.4/7.5)', detail: '11:00h (1–2 sect) or 12:00h (with FRM), tapering by 30m per sector.' },
+          { nodeId: 'cabin_fdp_diff', step: '4. Cabin & Meals', detail: 'Cabin Crew add reporting diff (up to +1:00h). Meals required if FDP > 5:00h.' }
+        ]
+      },
+      {
+        title: 'Flow 2: Rostered FDP Extensions (Methods 1, 2 & 3)',
+        subtitle: 'Three mutually exclusive ways to extend FDP beyond Table 7.3',
+        color: 'border-amber-500/40 bg-amber-950/15',
+        steps: [
+          { nodeId: 'ext_method1', step: 'Method 1: Planned (+1h)', detail: 'No onboard rest. Max 2× in 7d. WOCL sector caps: 5 (none), 4 (≤2h), 2 (>2h). Needs +4h rest.' },
+          { nodeId: 'accomm_defs', step: 'Check Rest Facility', detail: 'A350/B777/B787 bunks = Class 1. A330 Biz (33R/33C) = Class 3. Economy = Fails.' },
+          { nodeId: 'ext_method2', step: 'Method 2: Augmented', detail: 'Max 3 sectors. +1 Pilot = 14/15/16h; +2 Pilots = 15/16/17h (+1h if 1 sect >9h). Dest rest ≥14h.' },
+          { nodeId: 'ext_method3', step: 'Method 3: Split Duty', detail: 'Min 3:00h net ground break adds +50% of break to Basic FDP. Break counts 100% as FDP.' }
+        ]
+      },
+      {
+        title: 'Flow 3: Standby, Delays & Unforeseen Operational Disruptions',
+        subtitle: 'Managing day-of-operation callouts, delays, and Captain’s Discretion',
+        color: 'border-sky-500/40 bg-sky-950/15',
+        steps: [
+          { nodeId: 'standby_rules', step: '1. Standby Callout', detail: 'Airport SBY >4h or Home/Hotel SBY >6h (>8h aug/split, excl. 23:00–07:00) reduces Max FDP.' },
+          { nodeId: 'pic_discretion', step: '2. Delayed Reporting', detail: '<4h delay = original FDP; ≥4h = stricter FDP; ≥10h undisturbed = counts as Rest Period.' },
+          { nodeId: 'pic_discretion', step: '3. PIC Discretion', detail: 'At/after report: max +2:00h (unaug) or +3:00h (aug) from Basic FDP. Rest floor ≥10:00h.' },
+          { nodeId: 'frms_samn', step: '4. CAAT & Safety Log', detail: 'File OR report. If extension or rest reduction >1:00h, report to CAAT within 28 days.' }
+        ]
+      },
+      {
+        title: 'Flow 4: Post-Duty Rest, RERRP & Time Zone Recovery',
+        subtitle: 'Ensuring complete physiological recovery before the next rotation',
+        color: 'border-rose-500/40 bg-rose-950/15',
+        steps: [
+          { nodeId: 'min_rest_daily', step: '1. Daily Min Rest', detail: 'BKK: ≥ DP or 12:00h. Away: ≥ DP or 10:00h (incl. 8h sleep; add 2× hotel travel >30m).' },
+          { nodeId: 'disruptive_sched', step: '2. Disruptive Check', detail: 'Late finish/Night to Early start at BKK needs 1 Local Night. ≥4 disruptive duties → 60h RERRP.' },
+          { nodeId: 'rerrp_tz_recovery', step: '3. TZ ≥ 4h & RERRP', detail: 'Away rest ≥14:00h; BKK recovery 2–5 Local Nights (Table 7.10). Weekly RERRP ≥36h (2 LN).' }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 2. APPLICATION STATE & COORDINATE COMPUTATION
+    // =========================================================================
+    const state = {
+      currentView: 'graph',
+      layoutMode: 'board',
+      showAllEdges: false,
+      inspectorVisible: true,
+      selectedNodeId: 'ext_method2',
+      hoveredNodeId: null,
+      persona: 'crew',
+      activeLayer: 'all',
+      searchQuery: '',
+      diffOverlay: false,
+      darkMode: true,
+      activeTourId: '',
+      activeTourStep: 0,
+      highlightedPath: [],
+      panX: 24,
+      panY: 20,
+      scale: 0.85,
+      isPanning: false,
+      panStartX: 0,
+      panStartY: 0,
+      draggedNode: null
+    };
+
+    const nodeMap = new Map(GRAPH_NODES.map(n => [n.id, n]));
+
+    function applyLayoutCoordinates(mode) {
+      state.layoutMode = mode;
+      GRAPH_NODES.forEach(node => {
+        const meta = LAYER_META[node.layer];
+        if (mode === 'board') {
+          node.x = meta.bx;
+          node.y = meta.by + 98 + node.slot * 86;
+        } else {
+          node.x = meta.fx;
+          node.y = meta.fy + 102 + node.slot * 92;
+        }
+      });
+    }
+
+    // =========================================================================
+    // 3. RENDER HIGH-VISIBILITY STRUCTURAL KNOWLEDGE GRAPH
+    // =========================================================================
+    function getFilteredNodeIds() {
+      const q = state.searchQuery.trim().toLowerCase();
+      const matched = new Set();
+      GRAPH_NODES.forEach(node => {
+        const layerMatch = state.activeLayer === 'all' || node.layer === state.activeLayer;
+        if (!layerMatch) return;
+        if (!q) {
+          matched.add(node.id);
+          return;
+        }
+        const haystack = [
+          node.label,
+          node.badge,
+          node.section,
+          node.keyMetric,
+          node.personas.overview,
+          node.personas.crew,
+          node.personas.dispatcher,
+          node.personas.safety,
+          ...(node.bullets || []),
+          ...(node.tags || [])
+        ].join(' ').toLowerCase();
+        if (haystack.includes(q)) {
+          matched.add(node.id);
+        }
+      });
+      return matched;
+    }
+
+    function applyTransform() {
+      const g = document.getElementById('graphTransformGroup');
+      if (g) {
+        g.setAttribute('transform', `translate(${state.panX}, ${state.panY}) scale(${state.scale})`);
+      }
+    }
+
+    function renderGraph() {
+      const hullsLayer = document.getElementById('graphHullsLayer');
+      const edgesLayer = document.getElementById('graphEdgesLayer');
+      const nodesLayer = document.getElementById('graphNodesLayer');
+      const labelsLayer = document.getElementById('graphEdgeLabelsLayer');
+      if (!hullsLayer || !edgesLayer || !nodesLayer || !labelsLayer) return;
+
+      const visibleIds = getFilteredNodeIds();
+      const focusId = state.hoveredNodeId || state.selectedNodeId;
+      const connectedIds = new Set([focusId]);
+      GRAPH_EDGES.forEach(e => {
+        if (e.from === focusId) connectedIds.add(e.to);
+        if (e.to === focusId) connectedIds.add(e.from);
+      });
+
+      const pathSet = new Set(state.highlightedPath);
+      const hasPath = pathSet.size > 1;
+
+      hullsLayer.innerHTML = '';
+      Object.entries(LAYER_META).forEach(([layerKey, meta]) => {
+        const cx = state.layoutMode === 'board' ? meta.bx : meta.fx;
+        const cy = state.layoutMode === 'board' ? meta.by : meta.fy;
+        const cw = state.layoutMode === 'board' ? meta.bw : meta.fw;
+        const ch = state.layoutMode === 'board' ? meta.bh : meta.fh;
+        const isActiveLayer = state.activeLayer === 'all' || state.activeLayer === layerKey;
+
+        const groupG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        groupG.style.opacity = isActiveLayer ? '1' : '0.25';
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', cx - cw / 2);
+        rect.setAttribute('y', cy);
+        rect.setAttribute('width', cw);
+        rect.setAttribute('height', ch);
+        rect.setAttribute('rx', 18);
+        rect.setAttribute('fill', state.darkMode ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255, 255, 255, 0.85)');
+        rect.setAttribute('stroke', meta.border);
+        rect.setAttribute('stroke-width', '2');
+        groupG.appendChild(rect);
+
+        const headerRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        headerRect.setAttribute('x', cx - cw / 2);
+        headerRect.setAttribute('y', cy);
+        headerRect.setAttribute('width', cw);
+        headerRect.setAttribute('height', 48);
+        headerRect.setAttribute('rx', 16);
+        headerRect.setAttribute('fill', meta.headerBg);
+        groupG.appendChild(headerRect);
+
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        title.setAttribute('x', cx);
+        title.setAttribute('y', cy + 21);
+        title.setAttribute('text-anchor', 'middle');
+        title.setAttribute('fill', '#FFFFFF');
+        title.setAttribute('font-size', '14');
+        title.setAttribute('font-weight', '800');
+        title.setAttribute('letter-spacing', '0.4px');
+        title.textContent = meta.name;
+        groupG.appendChild(title);
+
+        const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        sub.setAttribute('x', cx);
+        sub.setAttribute('y', cy + 38);
+        sub.setAttribute('text-anchor', 'middle');
+        sub.setAttribute('fill', 'rgba(255, 255, 255, 0.90)');
+        sub.setAttribute('font-size', '10.5');
+        sub.setAttribute('font-weight', '600');
+        sub.textContent = meta.sub;
+        groupG.appendChild(sub);
+
+        hullsLayer.appendChild(groupG);
+      });
+
+      edgesLayer.innerHTML = '';
+      labelsLayer.innerHTML = '';
+
+      GRAPH_EDGES.forEach(edge => {
+        const src = nodeMap.get(edge.from);
+        const dst = nodeMap.get(edge.to);
+        if (!src || !dst) return;
+
+        const isOutgoing = edge.from === focusId;
+        const isIncoming = edge.to === focusId;
+        const isDirectConn = isOutgoing || isIncoming;
+
+        let isPathEdge = false;
+        if (hasPath) {
+          for (let i = 0; i < state.highlightedPath.length - 1; i++) {
+            const a = state.highlightedPath[i];
+            const b = state.highlightedPath[i + 1];
+            if ((edge.from === a && edge.to === b) || (edge.from === b && edge.to === a)) {
+              isPathEdge = true;
+              break;
+            }
+          }
+        }
+
+        if (!state.showAllEdges && !isDirectConn && !isPathEdge) {
+          return;
+        }
+
+        const dx = dst.x - src.x;
+        const dy = dst.y - src.y;
+        const cx1 = src.x + dx * 0.45;
+        const cy1 = src.y + dy * 0.15;
+        const cx2 = src.x + dx * 0.55;
+        const cy2 = dst.y - dy * 0.15;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${src.x} ${src.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${dst.x} ${dst.y}`);
+        path.setAttribute('fill', 'none');
+
+        if (isPathEdge) {
+          path.setAttribute('stroke', '#22D3EE');
+          path.setAttribute('stroke-width', '3.5');
+          path.setAttribute('stroke-opacity', '1');
+          path.setAttribute('marker-end', 'url(#arrow-path)');
+        } else if (isOutgoing) {
+          path.setAttribute('stroke', '#FBBF24');
+          path.setAttribute('stroke-width', '2.8');
+          path.setAttribute('stroke-opacity', '0.95');
+          path.setAttribute('marker-end', 'url(#arrow-downstream)');
+        } else if (isIncoming) {
+          path.setAttribute('stroke', '#38BDF8');
+          path.setAttribute('stroke-width', '2.8');
+          path.setAttribute('stroke-opacity', '0.95');
+          path.setAttribute('marker-end', 'url(#arrow-upstream)');
+        } else {
+          path.setAttribute('stroke', state.darkMode ? '#64748B' : '#94A3B8');
+          path.setAttribute('stroke-width', '1.4');
+          path.setAttribute('stroke-opacity', '0.28');
+          path.setAttribute('marker-end', 'url(#arrow-default)');
+        }
+        edgesLayer.appendChild(path);
+
+        if (isDirectConn || isPathEdge) {
+          const midX = (src.x + dst.x) / 2;
+          const midY = (src.y + dst.y) / 2;
+          const labelW = Math.max(76, edge.label.length * 6.4 + 14);
+
+          const pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          pill.setAttribute('x', midX - labelW / 2);
+          pill.setAttribute('y', midY - 10);
+          pill.setAttribute('width', labelW);
+          pill.setAttribute('height', 19);
+          pill.setAttribute('rx', 6);
+          pill.setAttribute('fill', '#0F172A');
+          pill.setAttribute('stroke', isPathEdge ? '#22D3EE' : (isOutgoing ? '#FBBF24' : '#38BDF8'));
+          pill.setAttribute('stroke-width', '1.5');
+          labelsLayer.appendChild(pill);
+
+          const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          lbl.setAttribute('x', midX);
+          lbl.setAttribute('y', midY + 3);
+          lbl.setAttribute('text-anchor', 'middle');
+          lbl.setAttribute('fill', isPathEdge ? '#67E8F9' : (isOutgoing ? '#FDE68A' : '#BAE6FD'));
+          lbl.setAttribute('font-size', '10.5');
+          lbl.setAttribute('font-weight', '700');
+          lbl.textContent = edge.label;
+          labelsLayer.appendChild(lbl);
+        }
+      });
+
+      nodesLayer.innerHTML = '';
+      const cardW = state.layoutMode === 'board' ? 306 : 282;
+      const cardH = 74;
+
+      GRAPH_NODES.forEach(node => {
+        const meta = LAYER_META[node.layer];
+        const isSelected = node.id === state.selectedNodeId;
+        const isHovered = node.id === state.hoveredNodeId;
+        const isConnected = connectedIds.has(node.id);
+        const isVisible = visibleIds.has(node.id);
+        const isInPath = pathSet.has(node.id);
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+        g.setAttribute('class', `cursor-pointer transition-opacity ${isSelected && state.activeTourId ? 'tour-active-node' : ''}`);
+
+        if (!isVisible) {
+          g.style.opacity = '0.15';
+        } else if (hasPath && !isInPath) {
+          g.style.opacity = '0.28';
+        } else if (state.hoveredNodeId && !isConnected) {
+          g.style.opacity = '0.45';
+        } else {
+          g.style.opacity = '1';
+        }
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', -cardW / 2);
+        rect.setAttribute('y', -cardH / 2);
+        rect.setAttribute('width', cardW);
+        rect.setAttribute('height', cardH);
+        rect.setAttribute('rx', 13);
+
+        if (state.darkMode) {
+          rect.setAttribute('fill', isSelected ? '#1E1B4B' : (isHovered ? '#1E293B' : '#0F172A'));
+        } else {
+          rect.setAttribute('fill', isSelected ? '#FEF3C7' : '#FFFFFF');
+        }
+
+        if (isInPath) {
+          rect.setAttribute('stroke', '#22D3EE');
+          rect.setAttribute('stroke-width', '3.5');
+        } else if (isSelected) {
+          rect.setAttribute('stroke', '#FBBF24');
+          rect.setAttribute('stroke-width', '3.2');
+        } else if (state.diffOverlay && node.trUpdated) {
+          rect.setAttribute('stroke', '#F59E0B');
+          rect.setAttribute('stroke-width', '2.6');
+        } else if (isConnected) {
+          rect.setAttribute('stroke', meta.color);
+          rect.setAttribute('stroke-width', '2.4');
+        } else {
+          rect.setAttribute('stroke', state.darkMode ? '#334155' : '#CBD5E1');
+          rect.setAttribute('stroke-width', '1.6');
+        }
+        g.appendChild(rect);
+
+        const bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bar.setAttribute('x', -cardW / 2 + 5);
+        bar.setAttribute('y', -cardH / 2 + 7);
+        bar.setAttribute('width', 6);
+        bar.setAttribute('height', cardH - 14);
+        bar.setAttribute('rx', 3);
+        bar.setAttribute('fill', isSelected ? '#FBBF24' : meta.color);
+        g.appendChild(bar);
+
+        const secBadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        secBadge.setAttribute('x', -cardW / 2 + 18);
+        secBadge.setAttribute('y', -cardH / 2 + 18);
+        secBadge.setAttribute('fill', meta.color);
+        secBadge.setAttribute('font-size', '10.5');
+        secBadge.setAttribute('font-weight', '800');
+        secBadge.setAttribute('font-family', 'JetBrains Mono, monospace');
+        secBadge.textContent = node.section;
+        g.appendChild(secBadge);
+
+        if (isSelected) {
+          const selTag = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          selTag.setAttribute('x', cardW / 2 - 12);
+          selTag.setAttribute('y', -cardH / 2 + 18);
+          selTag.setAttribute('text-anchor', 'end');
+          selTag.setAttribute('fill', '#FBBF24');
+          selTag.setAttribute('font-size', '10');
+          selTag.setAttribute('font-weight', '800');
+          selTag.textContent = '● ACTIVE TOPIC';
+          g.appendChild(selTag);
+        } else if (state.diffOverlay && node.trUpdated) {
+          const diffTag = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          diffTag.setAttribute('x', cardW / 2 - 12);
+          diffTag.setAttribute('y', -cardH / 2 + 18);
+          diffTag.setAttribute('text-anchor', 'end');
+          diffTag.setAttribute('fill', '#FBBF24');
+          diffTag.setAttribute('font-size', '10');
+          diffTag.setAttribute('font-weight', '800');
+          diffTag.textContent = '★ TR001/02';
+          g.appendChild(diffTag);
+        }
+
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        title.setAttribute('x', -cardW / 2 + 18);
+        title.setAttribute('y', 4);
+        title.setAttribute('fill', state.darkMode ? '#FFFFFF' : '#0F172A');
+        title.setAttribute('font-size', '13.5');
+        title.setAttribute('font-weight', '800');
+        title.textContent = node.label;
+        g.appendChild(title);
+
+        const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        badgeBg.setAttribute('x', -cardW / 2 + 16);
+        badgeBg.setAttribute('y', 11);
+        badgeBg.setAttribute('width', cardW - 28);
+        badgeBg.setAttribute('height', 20);
+        badgeBg.setAttribute('rx', 5);
+        badgeBg.setAttribute('fill', state.darkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(241, 245, 249, 0.95)');
+        g.appendChild(badgeBg);
+
+        const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        sub.setAttribute('x', -cardW / 2 + 22);
+        sub.setAttribute('y', 25);
+        sub.setAttribute('fill', isSelected ? '#FDE68A' : (state.darkMode ? '#E2E8F0' : '#1E293B'));
+        sub.setAttribute('font-size', '11');
+        sub.setAttribute('font-weight', '700');
+        sub.textContent = node.badge;
+        g.appendChild(sub);
+
+        g.addEventListener('mouseenter', () => {
+          state.hoveredNodeId = node.id;
+          renderGraph();
+        });
+        g.addEventListener('mouseleave', () => {
+          state.hoveredNodeId = null;
+          renderGraph();
+        });
+        g.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          state.draggedNode = { node, startX: e.clientX, startY: e.clientY, origX: node.x, origY: node.y, moved: false };
+        });
+        g.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectNode(node.id, false);
+        });
+
+        nodesLayer.appendChild(g);
+      });
+
+      applyTransform();
+    }
+
+    // =========================================================================
+    // 4. NODE INSPECTOR UPDATES
+    // =========================================================================
+    const PERSONA_LABELS = {
+      overview: 'Overview (Quick Scan)',
+      crew: 'Flight & Cabin Crew Focus',
+      dispatcher: 'Roster / OP-1 Dispatcher Focus',
+      safety: 'Safety / FRMS Auditor Focus'
+    };
+
+    function selectNode(nodeId, centerInView = false) {
+      const node = nodeMap.get(nodeId);
+      if (!node) return;
+      state.selectedNodeId = nodeId;
+
+      const meta = LAYER_META[node.layer];
+      const layerBadge = document.getElementById('inspLayerBadge');
+      layerBadge.textContent = meta.name;
+      layerBadge.style.color = meta.color;
+      layerBadge.style.borderColor = meta.border;
+
+      document.getElementById('inspSectionBadge').textContent = `OM-A ${node.section} (p. ${node.page})`;
+      document.getElementById('inspTitle').textContent = node.label;
+      document.getElementById('inspKeyMetric').textContent = node.keyMetric;
+
+      const diffBadge = document.getElementById('inspDiffBadge');
+      if (node.trUpdated) {
+        diffBadge.classList.remove('hidden');
+      } else {
+        diffBadge.classList.add('hidden');
+      }
+
+      document.getElementById('inspPersonaLabel').textContent = PERSONA_LABELS[state.persona] || 'Flight & Cabin Crew Focus';
+      document.getElementById('inspPersonaText').textContent = node.personas[state.persona] || node.personas.crew;
+
+      const bulletsEl = document.getElementById('inspBullets');
+      bulletsEl.innerHTML = '';
+      (node.bullets || []).forEach(b => {
+        const li = document.createElement('li');
+        li.className = 'flex items-start gap-2';
+        li.innerHTML = `<span class="text-amber-400 font-extrabold mt-0.5">▸</span><span>${b}</span>`;
+        bulletsEl.appendChild(li);
+      });
+
+      const tableWrap = document.getElementById('inspTableWrapper');
+      const tableCont = document.getElementById('inspTableContainer');
+      if (node.tableHeaders && node.tableRows) {
+        tableWrap.classList.remove('hidden');
+        document.getElementById('inspTableTitle').textContent = node.tableTitle || 'Regulatory Lookup Table';
+        let html = '<table class="w-full text-xs border-collapse">';
+        html += '<thead><tr class="border-b border-slate-700 bg-slate-900 text-purple-300">';
+        node.tableHeaders.forEach(h => {
+          html += `<th class="py-2 px-2.5 text-left font-bold">${h}</th>`;
+        });
+        html += '</tr></thead><tbody class="divide-y divide-slate-800 text-slate-200 font-mono">';
+        node.tableRows.forEach(row => {
+          html += '<tr>';
+          row.forEach((cell, idx) => {
+            html += `<td class="py-1.5 px-2.5 ${idx === 0 ? 'font-sans font-bold text-white' : ''}">${cell}</td>`;
+          });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        tableCont.innerHTML = html;
+      } else {
+        tableWrap.classList.add('hidden');
+      }
+
+      document.getElementById('inspDiffText').textContent = node.diffNote || 'Standard TCAR ORO.FTL provision.';
+
+      const upEl = document.getElementById('inspUpstreamList');
+      const downEl = document.getElementById('inspDownstreamList');
+      upEl.innerHTML = '';
+      downEl.innerHTML = '';
+
+      const upEdges = GRAPH_EDGES.filter(e => e.to === nodeId);
+      const downEdges = GRAPH_EDGES.filter(e => e.from === nodeId);
+
+      if (upEdges.length === 0) {
+        upEl.innerHTML = '<span class="text-xs text-slate-500 italic">Foundational rule (no upstream prerequisites)</span>';
+      } else {
+        upEdges.forEach(e => {
+          const src = nodeMap.get(e.from);
+          if (!src) return;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-sky-500/40 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition-all';
+          btn.innerHTML = `<span class="text-sky-400 font-bold">←</span><span>${src.label}</span><span class="text-[10px] text-sky-300">(${e.label})</span>`;
+          btn.addEventListener('click', () => selectNode(src.id, true));
+          upEl.appendChild(btn);
+        });
+      }
+
+      if (downEdges.length === 0) {
+        downEl.innerHTML = '<span class="text-xs text-slate-500 italic">Terminal recovery / safety outcome</span>';
+      } else {
+        downEdges.forEach(e => {
+          const dst = nodeMap.get(e.to);
+          if (!dst) return;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-xs font-semibold text-slate-100 flex items-center gap-1.5 transition-all';
+          btn.innerHTML = `<span>${dst.label}</span><span class="text-[10px] text-amber-300">(${e.label})</span><span class="text-amber-400 font-bold">→</span>`;
+          btn.addEventListener('click', () => selectNode(dst.id, true));
+          downEl.appendChild(btn);
+        });
+      }
+
+      const tagsEl = document.getElementById('inspTagsList');
+      tagsEl.innerHTML = '';
+      (node.tags || []).forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300';
+        span.textContent = t;
+        tagsEl.appendChild(span);
+      });
+
+      if (centerInView) {
+        centerOnNode(node);
+      }
+      renderGraph();
+    }
+
+    function centerOnNode(node) {
+      const vp = document.getElementById('graphViewport');
+      if (!vp) return;
+      const rect = vp.getBoundingClientRect();
+      state.scale = Math.max(state.scale, 0.92);
+      state.panX = rect.width / 2 - node.x * state.scale;
+      state.panY = rect.height / 2 - node.y * state.scale;
+      applyTransform();
+    }
+
+    function fitGraphToScreen() {
+      const vp = document.getElementById('graphViewport');
+      if (!vp) return;
+      const rect = vp.getBoundingClientRect();
+      if (state.layoutMode === 'board') {
+        const graphW = 1160;
+        const graphH = 940;
+        const scaleX = (rect.width - 40) / graphW;
+        const scaleY = (rect.height - 60) / graphH;
+        state.scale = Math.max(0.55, Math.min(1.05, Math.min(scaleX, scaleY)));
+        state.panX = Math.max(12, (rect.width - graphW * state.scale) / 2);
+        state.panY = Math.max(36, (rect.height - graphH * state.scale) / 2);
+      } else {
+        const graphW = 2060;
+        const graphH = 520;
+        const scaleX = (rect.width - 40) / graphW;
+        const scaleY = (rect.height - 60) / graphH;
+        state.scale = Math.max(0.42, Math.min(1.0, Math.min(scaleX, scaleY)));
+        state.panX = Math.max(12, (rect.width - graphW * state.scale) / 2);
+        state.panY = Math.max(44, (rect.height - graphH * state.scale) / 2);
+      }
+      applyTransform();
+    }
+
+    // =========================================================================
+    // 5. RENDER OPERATIONAL DOMAIN FLOWS
+    // =========================================================================
+    function renderDomainFlows() {
+      const grid = document.getElementById('domainFlowsGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      DOMAIN_FLOWS.forEach(flow => {
+        const card = document.createElement('div');
+        card.className = `rounded-2xl border p-4 lg:p-5 ${flow.color}`;
+        let stepsHtml = '';
+        flow.steps.forEach((st, idx) => {
+          stepsHtml += `
+            <div class="flex items-stretch gap-2 flex-1 min-w-[200px]">
+              <button type="button" data-jump-node="${st.nodeId}" class="domain-step-btn flex-1 text-left p-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400 transition-all flex flex-col justify-between group">
+                <div>
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="text-xs font-extrabold text-amber-300 group-hover:text-amber-200">${st.step}</span>
+                    <span class="text-[10px] font-bold text-purple-300">Locate ↗</span>
+                  </div>
+                  <p class="text-xs text-slate-200 leading-relaxed">${st.detail}</p>
+                </div>
+              </button>
+              ${idx < flow.steps.length - 1 ? '<div class="hidden lg:flex items-center text-slate-400 font-extrabold px-0.5">→</div>' : ''}
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="mb-3">
+            <h3 class="text-base font-extrabold text-white">${flow.title}</h3>
+            <p class="text-xs text-slate-400">${flow.subtitle}</p>
+          </div>
+          <div class="flex flex-col lg:flex-row items-stretch gap-2.5">
+            ${stepsHtml}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      grid.querySelectorAll('.domain-step-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const nid = btn.getAttribute('data-jump-node');
+          switchMainView('graph');
+          selectNode(nid, true);
+        });
+      });
+    }
+
+    // =========================================================================
+    // 6. FLIGHT LEG STD/ETA & IN-FLIGHT REST ENGINE (§7.2.4.2 & TABLE 7.7)
+    // =========================================================================
+    function parseTimeToMins(tStr) {
+      if (!tStr || !tStr.includes(':')) return 0;
+      const [h, m] = tStr.split(':').map(n => parseInt(n, 10) || 0);
+      return ((h % 24) * 60) + (m % 60);
+    }
+
+    function minsToClock(totalMins) {
+      const norm = ((Math.round(totalMins) % 1440) + 1440) % 1440;
+      const h = Math.floor(norm / 60);
+      const m = norm % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    function fmtDuration(mins) {
+      const safe = Math.max(0, Math.round(mins));
+      const h = Math.floor(safe / 60);
+      const m = safe % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}h`;
+    }
+
+    function calcLegDiff(stdMins, etaMins) {
+      let diff = etaMins - stdMins;
+      if (diff <= 0) diff += 1440; // crosses midnight
+      return diff;
+    }
+
+    // Lookup Table 7.3 Basic Max FDP (in minutes) from exact reporting clock minute (0..1439) and sectors (1..10)
+    function lookupTable73FromClock(repMins, sectors) {
+      const sIdx = Math.min(9, Math.max(0, sectors - 1));
+      let base12 = 660; // default 11:00h (17:00-04:59)
+      let winLabel = '17:00–04:59 (Night)';
+
+      if (repMins >= 360 && repMins <= 809) {
+        base12 = 780; // 06:00-13:29 -> 13:00h
+        winLabel = '06:00–13:29 (Peak)';
+      } else if (repMins >= 810 && repMins <= 839) {
+        base12 = 765; winLabel = '13:30–13:59';
+      } else if (repMins >= 840 && repMins <= 869) {
+        base12 = 750; winLabel = '14:00–14:29';
+      } else if (repMins >= 870 && repMins <= 899) {
+        base12 = 735; winLabel = '14:30–14:59';
+      } else if (repMins >= 900 && repMins <= 929) {
+        base12 = 720; winLabel = '15:00–15:29';
+      } else if (repMins >= 930 && repMins <= 959) {
+        base12 = 705; winLabel = '15:30–15:59';
+      } else if (repMins >= 960 && repMins <= 989) {
+        base12 = 690; winLabel = '16:00–16:29';
+      } else if (repMins >= 990 && repMins <= 1019) {
+        base12 = 675; winLabel = '16:30–16:59';
+      } else if (repMins >= 300 && repMins <= 314) {
+        base12 = 720; winLabel = '05:00–05:14 (Early)';
+      } else if (repMins >= 315 && repMins <= 329) {
+        base12 = 735; winLabel = '05:15–05:29 (Early)';
+      } else if (repMins >= 330 && repMins <= 344) {
+        base12 = 750; winLabel = '05:30–05:44 (Early)';
+      } else if (repMins >= 345 && repMins <= 359) {
+        base12 = 765; winLabel = '05:45–05:59 (Early)';
+      }
+
+      const reduction = Math.max(0, sIdx - 1) * 30;
+      const fdpMins = Math.max(540, base12 - reduction);
+      return { fdpMins, winLabel };
+    }
+
+    // Table 7.7 Cabin Crew Minimum In-Flight Rest Lookup (returns { minRestMins, bandLabel, allowed })
+    function lookupCabinTable77(cabinFdpMins, restClass) {
+      const bands = [
+        { max: 870,  label: '≤ 14:30h',       c1: 90,  c2: 90,  c3: 90 },
+        { max: 900,  label: '14:31–15:00h',   c1: 105, c2: 120, c3: 140 },
+        { max: 930,  label: '15:01–15:30h',   c1: 120, c2: 140, c3: 160 },
+        { max: 960,  label: '15:31–16:00h',   c1: 135, c2: 160, c3: 180 },
+        { max: 990,  label: '16:01–16:30h',   c1: 155, c2: 180, c3: 200 },
+        { max: 1020, label: '16:31–17:00h',   c1: 180, c2: 205, c3: 220 },
+        { max: 1050, label: '17:01–17:30h',   c1: 205, c2: 250, c3: null },
+        { max: 1080, label: '17:31–18:00h',   c1: 230, c2: 290, c3: null },
+        { max: 1110, label: '18:01–18:30h*',  c1: 270, c2: 335, c3: null }
+      ];
+
+      for (const b of bands) {
+        if (cabinFdpMins <= b.max) {
+          const val = restClass === 1 ? b.c1 : (restClass === 2 ? b.c2 : b.c3);
+          return { minRestMins: val, bandLabel: b.label, allowed: val !== null };
+        }
+      }
+      return { minRestMins: null, bandLabel: '> 18:30h (Exceeds Table 7.7)', allowed: false };
+    }
+
+    function updateSimulator() {
+      const depBase = document.getElementById('simDepBase').value;
+      const sectors = parseInt(document.getElementById('simSectors').value, 10);
+      const restClass = parseInt(document.getElementById('simRestClass').value, 10);
+      const augment = document.getElementById('simAugment').value;
+      const climbBuffer = parseInt(document.getElementById('simClimbBuffer').value, 10);
+      const cabinShifts = parseInt(document.getElementById('simCabinGroups').value, 10);
+
+      const tzDiff = parseInt(document.getElementById('simTzDiff').value, 10);
+      const elapsed = parseInt(document.getElementById('simElapsed').value, 10);
+      const disc = parseInt(document.getElementById('simDiscretion').value, 10);
+
+      const sleep24 = parseInt(document.getElementById('simSleep24').value, 10);
+      const sleep48 = parseInt(document.getElementById('simSleep48').value, 10);
+      const awake = parseInt(document.getElementById('simAwake').value || '10', 10);
+
+      // Show/Hide Leg 2 and Leg 3 inputs
+      document.getElementById('leg2Container').classList.toggle('hidden', sectors < 2);
+      document.getElementById('leg3Container').classList.toggle('hidden', sectors < 3);
+
+      // 1. Parse Leg STD & ETA and compute Block Times
+      const l1Std = parseTimeToMins(document.getElementById('leg1Std').value);
+      const l1Eta = parseTimeToMins(document.getElementById('leg1Eta').value);
+      const l1Block = calcLegDiff(l1Std, l1Eta);
+      document.getElementById('leg1BlockBadge').textContent = `Block: ${fmtDuration(l1Block)}`;
+
+      let l2Block = 0, l3Block = 0;
+      let totalElapsedFlightSpan = l1Block; // from Leg 1 STD to Final Leg ETA
+      let finalEtaClock = l1Eta;
+      let longestLegBlock = l1Block;
+
+      if (sectors >= 2) {
+        const l2Std = parseTimeToMins(document.getElementById('leg2Std').value);
+        const l2Eta = parseTimeToMins(document.getElementById('leg2Eta').value);
+        l2Block = calcLegDiff(l2Std, l2Eta);
+        const ground1 = calcLegDiff(l1Eta, l2Std);
+        document.getElementById('leg2BlockBadge').textContent = `Block: ${fmtDuration(l2Block)} (Turn: ${fmtDuration(ground1)})`;
+        totalElapsedFlightSpan += ground1 + l2Block;
+        finalEtaClock = l2Eta;
+        longestLegBlock = Math.max(longestLegBlock, l2Block);
+
+        if (sectors >= 3) {
+          const l3Std = parseTimeToMins(document.getElementById('leg3Std').value);
+          const l3Eta = parseTimeToMins(document.getElementById('leg3Eta').value);
+          l3Block = calcLegDiff(l3Std, l3Eta);
+          const ground2 = calcLegDiff(l2Eta, l3Std);
+          document.getElementById('leg3BlockBadge').textContent = `Block: ${fmtDuration(l3Block)} (Turn: ${fmtDuration(ground2)})`;
+          totalElapsedFlightSpan += ground2 + l3Block;
+          finalEtaClock = l3Eta;
+          longestLegBlock = Math.max(longestLegBlock, l3Block);
+        }
+      }
+
+      // 2. Reporting Buffers (Table 7.2)
+      let fcRepBuffer = 105; // 1:45h BKK
+      let ccRepBuffer = 120; // 2:00h BKK
+      if (depBase === 'line') {
+        fcRepBuffer = 75;
+        ccRepBuffer = 75;
+      } else if (depBase === 'vvip_bkk') {
+        fcRepBuffer = 165;
+        ccRepBuffer = 180;
+      }
+
+      const fcRepClock = ((l1Std - fcRepBuffer) % 1440 + 1440) % 1440;
+      const ccRepClock = ((l1Std - ccRepBuffer) % 1440 + 1440) % 1440;
+
+      // Actual FDP (Report -> Final ETA) & DP (+30m post-flight)
+      const fcActualFdp = totalElapsedFlightSpan + fcRepBuffer;
+      const ccActualFdp = totalElapsedFlightSpan + ccRepBuffer;
+      const fcActualDp = fcActualFdp + 30;
+
+      // 3. Acclimatisation State (Table 7.1) & Basic Max FDP (Table 7.3/7.4)
+      let acclimState = 'B';
+      if (tzDiff < 4 || elapsed < 48) {
+        acclimState = 'B';
+      } else if (tzDiff === 5) {
+        acclimState = elapsed >= 72 ? 'D' : 'X';
+      } else if (tzDiff === 7) {
+        acclimState = elapsed >= 96 ? 'D' : 'X';
+      } else {
+        acclimState = elapsed >= 120 ? 'D' : 'X';
+      }
+
+      let basicFdpMins = 660;
+      let winLabel = 'Table 7.4 (State X)';
+      if (acclimState === 'X') {
+        const sIdx = Math.min(5, Math.max(0, sectors - 1));
+        basicFdpMins = [660, 660, 630, 600, 570, 540][sIdx];
+      } else {
+        const res = lookupTable73FromClock(fcRepClock, sectors);
+        basicFdpMins = res.fdpMins;
+        winLabel = res.winLabel;
+      }
+
+      // 4. Max FDP Ceiling with Method 2 In-Flight Rest (or Method 1 / 3)
+      const has9hLegBonus = longestLegBlock > 540 && sectors <= 2; // >9:00h continuous flight & <=2 sectors
+      let maxFdpMins = basicFdpMins;
+      let extDesc = 'Unaugmented Basic Limit';
+
+      if (augment === 'm2_1p' || augment === 'm2_2p') {
+        const is2P = augment === 'm2_2p';
+        const baseM2 = restClass === 1 ? (is2P ? 1020 : 960) : (restClass === 2 ? (is2P ? 960 : 900) : (is2P ? 900 : 840));
+        const bonus = has9hLegBonus ? 60 : 0;
+        maxFdpMins = baseM2 + bonus;
+        extDesc = `${is2P ? '+2 Pilots' : '+1 Pilot'}, Class ${restClass} (${fmtDuration(baseM2)}${bonus ? ' + 1:00h >9h leg bonus' : ''})`;
+      } else if (augment === 'm1') {
+        maxFdpMins = basicFdpMins + 60;
+        extDesc = 'Method 1 Planned (+1:00h, No Bunk)';
+      } else if (augment === 'm3_4h') {
+        maxFdpMins = basicFdpMins + 120;
+        extDesc = 'Method 3 Split Duty (+2:00h from 4h Break)';
+      }
+
+      if (disc > 0) {
+        const baseForDisc = augment === 'm1' ? basicFdpMins : maxFdpMins;
+        maxFdpMins = baseForDisc + disc * 60;
+        extDesc += ` + PIC Discretion (+${disc}:00h)`;
+      }
+
+      // 5. Update Top 4 Summary Cards
+      document.getElementById('simOutReportClock').textContent =
+        fcRepBuffer === ccRepBuffer ? `${minsToClock(fcRepClock)} (All)` : `FC ${minsToClock(fcRepClock)} / CC ${minsToClock(ccRepClock)}`;
+      document.getElementById('simOutReportSub').textContent = `State ${acclimState} • ${winLabel}`;
+
+      document.getElementById('simOutActualFdp').textContent =
+        fcRepBuffer === ccRepBuffer ? `${fmtDuration(fcActualFdp)}` : `FC ${fmtDuration(fcActualFdp)} / CC ${fmtDuration(ccActualFdp)}`;
+      document.getElementById('simOutActualSub').textContent =
+        `Longest Leg: ${fmtDuration(longestLegBlock)}${has9hLegBonus ? ' (>9h +1h Bonus!)' : ''}`;
+
+      document.getElementById('simOutTotalFdp').textContent = fmtDuration(maxFdpMins);
+      const marginMins = maxFdpMins - fcActualFdp;
+      const totalSubEl = document.getElementById('simOutTotalSub');
+      if (sectors > 3 && (augment === 'm2_1p' || augment === 'm2_2p')) {
+        totalSubEl.textContent = '⚠ INVALID: Method 2 Max 3 Sectors!';
+        totalSubEl.className = 'text-[11px] text-rose-400 font-bold mt-0.5';
+      } else if (marginMins >= 0) {
+        totalSubEl.textContent = `✓ LEGAL (Margin +${fmtDuration(marginMins)})`;
+        totalSubEl.className = 'text-[11px] text-emerald-400 font-bold mt-0.5';
+      } else {
+        totalSubEl.textContent = `⚠ EXCEEDS BY ${fmtDuration(-marginMins)}`;
+        totalSubEl.className = 'text-[11px] text-rose-400 font-bold mt-0.5';
+      }
+
+      // 6. In-Flight Rest Calculation (Flight Crew + Cabin Crew Table 7.7)
+      const ccTable77 = lookupCabinTable77(ccActualFdp, restClass);
+      const ccMinStr = ccTable77.allowed ? fmtDuration(ccTable77.minRestMins) : 'Not Allowed';
+      document.getElementById('simOutInflightRest').textContent = `FC 02:00h / CC ${ccMinStr}`;
+      document.getElementById('simOutInflightSub').textContent = `Table 7.7 (${ccTable77.bandLabel}, Cl.${restClass})`;
+
+      // Usable Cruise Window on Longest Leg
+      const climbHalf = Math.floor(climbBuffer * 0.45);
+      const descHalf = climbBuffer - climbHalf;
+      const usableCruiseMins = Math.max(0, longestLegBlock - climbBuffer);
+      const cruiseStartClock = (l1Std + climbHalf) % 1440;
+      const cruiseEndClock = ((l1Std + l1Block - descHalf) % 1440 + 1440) % 1440;
+      const offDutyClock = (finalEtaClock + 30) % 1440;
+
+      // Timeline labels
+      document.getElementById('tlLabelReport').textContent = `Report: ${minsToClock(fcRepClock)}`;
+      document.getElementById('tlLabelStd').textContent = `STD: ${minsToClock(l1Std)}`;
+      document.getElementById('tlLabelCruise').textContent = `Usable Cruise Rest Window: ${fmtDuration(usableCruiseMins)} (${minsToClock(cruiseStartClock)}–${minsToClock(cruiseEndClock)})`;
+      document.getElementById('tlLabelEta').textContent = `ETA: ${minsToClock(finalEtaClock)}`;
+      document.getElementById('tlLabelOffDuty').textContent = `Off-Duty: ${minsToClock(offDutyClock)}`;
+
+      // Flight Crew Rest Share Calculation
+      const numPilotShifts = augment === 'm2_2p' ? 3 : 2;
+      const fcMinNeededCruise = augment === 'm2_2p' ? (120 + 90 + 90) : (120 + 90); // 2h landing + 1.5h relief
+      const fcEqualShare = Math.floor(usableCruiseMins / numPilotShifts);
+
+      document.getElementById('fcAugBadge').textContent =
+        augment === 'm2_2p' ? `+2 Pilots (4 Total • Cl.${restClass})` :
+        augment === 'm2_1p' ? `+1 Pilot (3 Total • Cl.${restClass})` : `Unaugmented (Cl.${restClass})`;
+      document.getElementById('fcActualFdpText').textContent = fmtDuration(fcActualFdp);
+      document.getElementById('fcMaxFdpText').textContent = `(Max ${fmtDuration(maxFdpMins)})`;
+      document.getElementById('fcEqualShareText').textContent =
+        `${fmtDuration(fcEqualShare)} per shift (${numPilotShifts} shifts in ${fmtDuration(usableCruiseMins)} cruise)`;
+
+      // Cabin Crew Rest Share Calculation (Table 7.7)
+      document.getElementById('ccBandBadge').textContent = `FDP ${ccTable77.bandLabel}`;
+      document.getElementById('ccActualFdpText').textContent = fmtDuration(ccActualFdp);
+      document.getElementById('ccMinRestText').textContent = ccTable77.allowed ? `${fmtDuration(ccTable77.minRestMins)} per crew` : 'Exceeds Class Limit!';
+      document.getElementById('ccShiftCountLbl').textContent = String(cabinShifts);
+
+      const ccTotalCruiseNeeded = ccTable77.allowed ? (ccTable77.minRestMins * cabinShifts) : 9999;
+      document.getElementById('ccTotalShiftNeedText').textContent =
+        ccTable77.allowed ? `${fmtDuration(ccTotalCruiseNeeded)} min (${fmtDuration(Math.floor(usableCruiseMins / cabinShifts))} max/shift)` : 'N/A';
+
+      // Compute exact Shift Clock Windows inside Cruise
+      const shiftLen = Math.floor(usableCruiseMins / cabinShifts);
+      const s1Start = cruiseStartClock;
+      const s1End = (s1Start + shiftLen) % 1440;
+      const s2Start = s1End;
+      const s2End = (s2Start + shiftLen) % 1440;
+      let shiftClockSummary = `${minsToClock(s1Start)}–${minsToClock(s1End)} | ${minsToClock(s2Start)}–${minsToClock(s2End)}`;
+
+      document.getElementById('tlBarShift1').textContent = `Shift 1 (${minsToClock(s1Start)}–${minsToClock(s1End)})`;
+      document.getElementById('tlBarShift2').textContent = `Shift 2 (${minsToClock(s2Start)}–${minsToClock(s2End)})`;
+      const s3El = document.getElementById('tlBarShift3');
+      if (cabinShifts === 3) {
+        const s3Start = s2End;
+        const s3End = (s3Start + shiftLen) % 1440;
+        shiftClockSummary += ` | ${minsToClock(s3Start)}–${minsToClock(s3End)}`;
+        s3El.textContent = `Shift 3 (${minsToClock(s3Start)}–${minsToClock(s3End)})`;
+        s3El.classList.remove('hidden');
+      } else {
+        s3El.classList.add('hidden');
+      }
+      document.getElementById('ccShiftClockText').textContent = shiftClockSummary;
+
+      // Legality & Cruise Feasibility Banner
+      const legBadge = document.getElementById('inflightLegalityBadge');
+      const sumHead = document.getElementById('inflightSummaryHeadline');
+      const cruiseFeasible = ccTable77.allowed && usableCruiseMins >= ccTotalCruiseNeeded && usableCruiseMins >= fcMinNeededCruise && marginMins >= 0;
+
+      const destMinRest = Math.max(fcActualDp, 840); // max(preceding DP, 14:00h)
+      sumHead.textContent =
+        `Total Block: ${fmtDuration(l1Block + l2Block + l3Block)} • Total DP: ${fmtDuration(fcActualDp)} (incl. +30m post-flight) • Required Destination Rest: ${fmtDuration(destMinRest)} (≥ DP or 14:00h)`;
+
+      if (cruiseFeasible) {
+        legBadge.textContent = `✓ FDP & CRUISE REST FEASIBLE (+${fmtDuration(usableCruiseMins - ccTotalCruiseNeeded)} cruise buffer)`;
+        legBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+      } else if (!ccTable77.allowed) {
+        legBadge.textContent = `⚠ CLASS ${restClass} NOT ALLOWED FOR ${fmtDuration(ccActualFdp)} CABIN FDP`;
+        legBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40';
+      } else if (marginMins < 0) {
+        legBadge.textContent = `⚠ ACTUAL FDP EXCEEDS MAX LIMIT BY ${fmtDuration(-marginMins)}`;
+        legBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40';
+      } else {
+        legBadge.textContent = `⚠ CRUISE WINDOW (${fmtDuration(usableCruiseMins)}) SHORTER THAN ${cabinShifts}× REST SHIFTS (${fmtDuration(ccTotalCruiseNeeded)})`;
+        legBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+      }
+
+      // 7. PSWM Score
+      const pts24 = sleep24 <= 2 ? 12 : sleep24 === 3 ? 8 : sleep24 === 4 ? 4 : 0;
+      const pts48 = sleep48 <= 8 ? 8 : sleep48 === 9 ? 6 : sleep48 === 10 ? 4 : sleep48 === 11 ? 2 : 0;
+      const ptsAwake = Math.max(0, awake - sleep48);
+      const totalPswm = pts24 + pts48 + ptsAwake;
+      const pswmBadge = document.getElementById('simOutPswmBadge');
+      const pswmLevel = totalPswm === 0 ? 'Acceptable' : totalPswm <= 4 ? 'Minor Fatigue' : totalPswm <= 8 ? 'Moderate Fatigue' : 'Significant Risk!';
+      pswmBadge.textContent = `PSWM Score: ${totalPswm} pts (${pswmLevel})`;
+      pswmBadge.className = `text-xs font-extrabold ${totalPswm === 0 ? 'text-emerald-400' : totalPswm <= 4 ? 'text-sky-400' : totalPswm <= 8 ? 'text-amber-400' : 'text-rose-400'}`;
+
+      // 8. Active Rule Trace
+      const traceEl = document.getElementById('simRuleTrace');
+      const traceItems = [
+        { nodeId: 'reporting_times', title: `1. Reporting Time (Table 7.2) → FC ${minsToClock(fcRepClock)} / CC ${minsToClock(ccRepClock)}`, desc: `Based on Leg 1 STD ${minsToClock(l1Std)} minus ${fmtDuration(fcRepBuffer)} (Flight) / ${fmtDuration(ccRepBuffer)} (Cabin). Final ETA ${minsToClock(finalEtaClock)} (+30m post-flight → Off-Duty ${minsToClock(offDutyClock)}).` },
+        { nodeId: acclimState === 'X' ? 'basic_fdp_x' : 'basic_fdp_b_d', title: `2. State ${acclimState} & Basic Max FDP → ${fmtDuration(basicFdpMins)}`, desc: `Looked up at FC reporting time ${minsToClock(fcRepClock)} (${winLabel}) with ${sectors} operating leg(s).` },
+        { nodeId: 'ext_method2', title: `3. In-Flight Rest & Max FDP (§7.2.4.2 / Table 7.7) → Max ${fmtDuration(maxFdpMins)}`, desc: `${extDesc}. Cabin FDP ${fmtDuration(ccActualFdp)} requires ${ccMinStr} rest per crew in Class ${restClass}; Flight Crew require 2:00h (landing) / 1:30h (relief).` },
+        { nodeId: tzDiff >= 4 ? 'rerrp_tz_recovery' : 'min_rest_daily', title: `4. Post-Flight Destination Rest → Min ${fmtDuration(destMinRest)}`, desc: `After Method 2 or TZ ≥4h, destination rest is max(Preceding DP ${fmtDuration(fcActualDp)}, 14:00h) = ${fmtDuration(destMinRest)}.` },
+        { nodeId: 'pswm_model', title: `5. PSWM Fatigue Check (§7.3.13.2) → ${totalPswm} pts (${pswmLevel})`, desc: `Step 1 (24h sleep): ${pts24}p + Step 2 (48h sleep): ${pts48}p + Step 3 (Awake > 48h sleep): ${ptsAwake}p.` }
+      ];
+
+      traceEl.innerHTML = '';
+      traceItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-400 flex items-center justify-between gap-2 cursor-pointer transition-all';
+        div.innerHTML = `
+          <div>
+            <div class="font-bold text-white">${item.title}</div>
+            <div class="text-slate-400 text-[11px] mt-0.5">${item.desc}</div>
+          </div>
+          <span class="text-amber-400 font-bold text-xs shrink-0">Locate →</span>
+        `;
+        div.addEventListener('click', () => {
+          switchMainView('graph');
+          selectNode(item.nodeId, true);
+        });
+        traceEl.appendChild(div);
+      });
+    }
+
+    // =========================================================================
+    // 7. SHORTEST PATH FINDER & GUIDED TOURS
+    // =========================================================================
+    function findShortestPath(startId, endId) {
+      if (startId === endId) return [startId];
+      const adj = new Map();
+      GRAPH_NODES.forEach(n => adj.set(n.id, []));
+      GRAPH_EDGES.forEach(e => {
+        adj.get(e.from).push(e.to);
+        adj.get(e.to).push(e.from);
+      });
+
+      const queue = [[startId]];
+      const visited = new Set([startId]);
+      while (queue.length > 0) {
+        const path = queue.shift();
+        const curr = path[path.length - 1];
+        for (const next of (adj.get(curr) || [])) {
+          if (next === endId) return [...path, next];
+          if (!visited.has(next)) {
+            visited.add(next);
+            queue.push([...path, next]);
+          }
+        }
+      }
+      return [startId, endId];
+    }
+
+    function updateTourBanner() {
+      const banner = document.getElementById('tourBanner');
+      const tour = GUIDED_TOURS[state.activeTourId];
+      if (!tour) {
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+        renderGraph();
+        return;
+      }
+      banner.classList.remove('hidden');
+      banner.classList.add('flex');
+
+      const stepObj = tour.steps[state.activeTourStep];
+      document.getElementById('tourStepBadge').textContent = `Step ${state.activeTourStep + 1} / ${tour.steps.length}`;
+      document.getElementById('tourTitleText').textContent = tour.title;
+      document.getElementById('tourStepDesc').textContent = stepObj.text;
+
+      switchMainView('graph');
+      selectNode(stepObj.nodeId, true);
+    }
+
+    // =========================================================================
+    // 8. VIEW SWITCHING & INITIALIZATION
+    // =========================================================================
+    function switchMainView(viewName) {
+      state.currentView = viewName;
+      const views = {
+        graph: document.getElementById('viewGraphContainer'),
+        domain: document.getElementById('viewDomainContainer'),
+        simulator: document.getElementById('viewSimulatorContainer'),
+        tables: document.getElementById('viewTablesContainer')
+      };
+      const btns = {
+        graph: document.getElementById('viewBtnGraph'),
+        domain: document.getElementById('viewBtnDomain'),
+        simulator: document.getElementById('viewBtnSimulator'),
+        tables: document.getElementById('viewBtnTables')
+      };
+
+      Object.keys(views).forEach(k => {
+        if (k === viewName) {
+          views[k].classList.remove('hidden');
+          btns[k].className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-purple-600 text-white shadow';
+        } else {
+          views[k].classList.add('hidden');
+          btns[k].className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-300 hover:text-white';
+        }
+      });
+
+      if (viewName === 'graph') {
+        renderGraph();
+      }
+    }
+
+    function initApp() {
+      applyLayoutCoordinates('board');
+
+      const startSel = document.getElementById('pathStartSelect');
+      const endSel = document.getElementById('pathEndSelect');
+      GRAPH_NODES.forEach((n, idx) => {
+        const opt1 = document.createElement('option');
+        opt1.value = n.id;
+        opt1.textContent = `${n.section} — ${n.label}`;
+        if (idx === 0) opt1.selected = true;
+        startSel.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = n.id;
+        opt2.textContent = `${n.section} — ${n.label}`;
+        if (n.id === 'rerrp_tz_recovery') opt2.selected = true;
+        endSel.appendChild(opt2);
+      });
+
+      document.getElementById('viewBtnGraph').addEventListener('click', () => switchMainView('graph'));
+      document.getElementById('viewBtnDomain').addEventListener('click', () => switchMainView('domain'));
+      document.getElementById('viewBtnSimulator').addEventListener('click', () => switchMainView('simulator'));
+      document.getElementById('viewBtnTables').addEventListener('click', () => switchMainView('tables'));
+      document.getElementById('openSimFromNodeBtn').addEventListener('click', () => switchMainView('simulator'));
+
+      // Route Presets in Simulator
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = btn.getAttribute('data-preset');
+          if (p === 'bkk_lhr') {
+            document.getElementById('simDepBase').value = 'bkk';
+            document.getElementById('simSectors').value = '1';
+            document.getElementById('leg1Std').value = '00:50';
+            document.getElementById('leg1Eta').value = '13:25';
+            document.getElementById('simRestClass').value = '1';
+            document.getElementById('simAugment').value = 'm2_1p';
+          } else if (p === 'bkk_nrt') {
+            document.getElementById('simDepBase').value = 'bkk';
+            document.getElementById('simSectors').value = '1';
+            document.getElementById('leg1Std').value = '23:55';
+            document.getElementById('leg1Eta').value = '06:05';
+            document.getElementById('simRestClass').value = '3';
+            document.getElementById('simAugment').value = 'none';
+          } else if (p === 'bkk_syd_2leg') {
+            document.getElementById('simDepBase').value = 'bkk';
+            document.getElementById('simSectors').value = '2';
+            document.getElementById('leg1Std').value = '08:00';
+            document.getElementById('leg1Eta').value = '17:30';
+            document.getElementById('leg2Std').value = '18:45';
+            document.getElementById('leg2Eta').value = '21:15';
+            document.getElementById('simRestClass').value = '1';
+            document.getElementById('simAugment').value = 'm2_2p';
+          }
+          updateSimulator();
+        });
+      });
+
+      const boardBtn = document.getElementById('layoutBoardBtn');
+      const flowBtn = document.getElementById('layoutFlowBtn');
+      boardBtn.addEventListener('click', () => {
+        applyLayoutCoordinates('board');
+        boardBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow transition-all';
+        flowBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-all';
+        renderGraph();
+        fitGraphToScreen();
+      });
+      flowBtn.addEventListener('click', () => {
+        applyLayoutCoordinates('flow');
+        flowBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow transition-all';
+        boardBtn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-all';
+        renderGraph();
+        fitGraphToScreen();
+      });
+
+      const connBtn = document.getElementById('toggleConnectionLinesBtn');
+      connBtn.addEventListener('click', () => {
+        state.showAllEdges = !state.showAllEdges;
+        connBtn.textContent = state.showAllEdges ? '🔗 Links: All Visible' : '🔗 Links: Selected Only';
+        renderGraph();
+      });
+
+      const inspBtn = document.getElementById('toggleInspectorBtn');
+      const inspectorEl = document.getElementById('nodeInspector');
+      inspBtn.addEventListener('click', () => {
+        state.inspectorVisible = !state.inspectorVisible;
+        if (state.inspectorVisible) {
+          inspectorEl.classList.remove('hidden');
+          inspBtn.textContent = '⇄ Hide Details Panel';
+        } else {
+          inspectorEl.classList.add('hidden');
+          inspBtn.textContent = '⇄ Show Details Panel';
+        }
+        setTimeout(fitGraphToScreen, 50);
+      });
+
+      const syncPersona = (val) => {
+        state.persona = val;
+        document.getElementById('personaSelect').value = val;
+        document.getElementById('personaSelectMobile').value = val;
+        selectNode(state.selectedNodeId, false);
+      };
+      document.getElementById('personaSelect').addEventListener('change', (e) => syncPersona(e.target.value));
+      document.getElementById('personaSelectMobile').addEventListener('change', (e) => syncPersona(e.target.value));
+
+      document.getElementById('diffToggleBtn').addEventListener('click', () => {
+        state.diffOverlay = !state.diffOverlay;
+        const btn = document.getElementById('diffToggleBtn');
+        const dot = document.getElementById('diffDot');
+        if (state.diffOverlay) {
+          btn.classList.add('border-amber-500', 'text-amber-300');
+          dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+          btn.querySelector('span:last-child').textContent = 'TR001/02 Diff: ON';
+        } else {
+          btn.classList.remove('border-amber-500', 'text-amber-300');
+          dot.className = 'w-2 h-2 rounded-full bg-slate-500';
+          btn.querySelector('span:last-child').textContent = 'TR001/02 Diff';
+        }
+        renderGraph();
+      });
+
+      document.getElementById('themeToggleBtn').addEventListener('click', () => {
+        state.darkMode = !state.darkMode;
+        const vp = document.getElementById('graphViewport');
+        document.getElementById('themeIcon').textContent = state.darkMode ? '☀️' : '🌙';
+        if (state.darkMode) {
+          vp.classList.remove('graph-grid-light');
+          vp.classList.add('graph-grid-dark');
+        } else {
+          vp.classList.remove('graph-grid-dark');
+          vp.classList.add('graph-grid-light');
+        }
+        renderGraph();
+      });
+
+      const searchInput = document.getElementById('searchInput');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      searchInput.addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        clearSearchBtn.classList.toggle('hidden', !state.searchQuery);
+        const matches = Array.from(getFilteredNodeIds());
+        if (matches.length > 0 && !matches.includes(state.selectedNodeId)) {
+          selectNode(matches[0], false);
+        } else {
+          renderGraph();
+        }
+      });
+      clearSearchBtn.addEventListener('click', () => {
+        state.searchQuery = '';
+        searchInput.value = '';
+        clearSearchBtn.classList.add('hidden');
+        renderGraph();
+      });
+
+      document.querySelectorAll('.layer-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeLayer = btn.getAttribute('data-layer');
+          document.querySelectorAll('.layer-pill').forEach(b => {
+            if (b.getAttribute('data-layer') === state.activeLayer) {
+              b.classList.add('ring-2', 'ring-amber-400');
+            } else {
+              b.classList.remove('ring-2', 'ring-amber-400');
+            }
+          });
+          renderGraph();
+        });
+      });
+
+      const tourSelect = document.getElementById('tourSelect');
+      tourSelect.addEventListener('change', (e) => {
+        state.activeTourId = e.target.value;
+        state.activeTourStep = 0;
+        updateTourBanner();
+      });
+      document.getElementById('tourPrevBtn').addEventListener('click', () => {
+        const tour = GUIDED_TOURS[state.activeTourId];
+        if (!tour) return;
+        state.activeTourStep = (state.activeTourStep - 1 + tour.steps.length) % tour.steps.length;
+        updateTourBanner();
+      });
+      document.getElementById('tourNextBtn').addEventListener('click', () => {
+        const tour = GUIDED_TOURS[state.activeTourId];
+        if (!tour) return;
+        state.activeTourStep = (state.activeTourStep + 1) % tour.steps.length;
+        updateTourBanner();
+      });
+      document.getElementById('tourExitBtn').addEventListener('click', () => {
+        state.activeTourId = '';
+        tourSelect.value = '';
+        updateTourBanner();
+      });
+
+      const pathModal = document.getElementById('pathModal');
+      const openPathModal = () => {
+        pathModal.classList.remove('hidden');
+        pathModal.classList.add('flex');
+      };
+      const closePathModal = () => {
+        pathModal.classList.add('hidden');
+        pathModal.classList.remove('flex');
+      };
+      document.getElementById('pathModalBtn').addEventListener('click', openPathModal);
+      document.getElementById('closePathModalBtn').addEventListener('click', closePathModal);
+      document.getElementById('cancelPathBtn').addEventListener('click', closePathModal);
+      document.getElementById('runPathFinderBtn').addEventListener('click', () => {
+        const s = startSel.value;
+        const t = endSel.value;
+        state.highlightedPath = findShortestPath(s, t);
+        const names = state.highlightedPath.map(id => nodeMap.get(id)?.label || id).join(' → ');
+        document.getElementById('activePathText').textContent = names;
+        const banner = document.getElementById('activePathBanner');
+        banner.classList.remove('hidden');
+        banner.classList.add('flex');
+        closePathModal();
+        switchMainView('graph');
+        selectNode(s, false);
+        fitGraphToScreen();
+      });
+      document.getElementById('clearPathBtn').addEventListener('click', () => {
+        state.highlightedPath = [];
+        const banner = document.getElementById('activePathBanner');
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+        renderGraph();
+      });
+
+      const vp = document.getElementById('graphViewport');
+      vp.addEventListener('mousedown', (e) => {
+        if (state.draggedNode) return;
+        state.isPanning = true;
+        state.panStartX = e.clientX - state.panX;
+        state.panStartY = e.clientY - state.panY;
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (state.draggedNode) {
+          const dx = (e.clientX - state.draggedNode.startX) / state.scale;
+          const dy = (e.clientY - state.draggedNode.startY) / state.scale;
+          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            state.draggedNode.moved = true;
+            state.draggedNode.node.x = state.draggedNode.origX + dx;
+            state.draggedNode.node.y = state.draggedNode.origY + dy;
+            renderGraph();
+          }
+          return;
+        }
+        if (!state.isPanning) return;
+        state.panX = e.clientX - state.panStartX;
+        state.panY = e.clientY - state.panStartY;
+        applyTransform();
+      });
+      window.addEventListener('mouseup', () => {
+        state.isPanning = false;
+        state.draggedNode = null;
+      });
+      vp.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        const newScale = Math.max(0.35, Math.min(2.0, state.scale * factor));
+        const rect = vp.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        state.panX = mx - (mx - state.panX) * (newScale / state.scale);
+        state.panY = my - (my - state.panY) * (newScale / state.scale);
+        state.scale = newScale;
+        applyTransform();
+      }, { passive: false });
+
+      document.getElementById('zoomInBtn').addEventListener('click', () => {
+        state.scale = Math.min(2.0, state.scale * 1.18);
+        applyTransform();
+      });
+      document.getElementById('zoomOutBtn').addEventListener('click', () => {
+        state.scale = Math.max(0.35, state.scale * 0.85);
+        applyTransform();
+      });
+      document.getElementById('zoomResetBtn').addEventListener('click', fitGraphToScreen);
+
+      const simInputIds = [
+        'simDepBase', 'simSectors', 'leg1Std', 'leg1Eta', 'leg2Std', 'leg2Eta', 'leg3Std', 'leg3Eta',
+        'simClimbBuffer', 'simCabinGroups', 'simRestClass', 'simAugment', 'simTzDiff', 'simElapsed',
+        'simDiscretion', 'simSleep24', 'simSleep48', 'simAwake'
+      ];
+      simInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('change', updateSimulator);
+          el.addEventListener('input', updateSimulator);
+        }
+      });
+
+      renderDomainFlows();
+      updateSimulator();
+      selectNode('ext_method2', false);
+      setTimeout(fitGraphToScreen, 60);
+      window.addEventListener('resize', fitGraphToScreen);
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
